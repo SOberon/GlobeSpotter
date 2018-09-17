@@ -8,10 +8,13 @@ class main:
     def main(self):
         pass
 
-    def file_reader(self):
-        """
-        Reads a file, fill in more stuff later when you understand more of pydocs
-        :return:
+    def parse_txt_file(input_file):
+        """Parse a .txt file for IPv4 and IPv6 addresses.
+
+        Args:
+            input_file: A .txt file to be parsed.
+
+        :return: A list of IP addresses.
         """
         import re
 
