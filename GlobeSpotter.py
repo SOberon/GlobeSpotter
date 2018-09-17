@@ -1,4 +1,5 @@
 import unittest
+import pydoc
 # from unittest.mock import patch # Remove; patch is usually for API calls
 
 
@@ -8,6 +9,10 @@ class main:
         pass
 
     def file_reader(self):
+        """
+        Reads a file, fill in more stuff later when you understand more of pydocs
+        :return:
+        """
         import re
 
         file = open("temp.log")
