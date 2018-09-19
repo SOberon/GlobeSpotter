@@ -1,6 +1,11 @@
 import unittest
 import pydoc
-# from unittest.mock import patch # Remove; patch is usually for API calls
+import IPaddresses
+import Data
+
+from Data import CleanData  # Format and clean the data
+from IPAddresses import ExtractIPs
+
 
 
 class main:
@@ -8,23 +13,41 @@ class main:
     def main(self):
         pass
 
-    def parse_txt_file(input_file):
-        """Parse a .txt file for IPv4 and IPv6 addresses.
+    def get_ipv4s_from_file(input_file):
+        """
+        https://stackoverflow.com/questions/14026529/python-parse-file-for-ip-addresses
+
+        Parse a .txt file for IPv4 and IPv6 addresses.
 
         Args:
             input_file: A .txt file to be parsed.
 
         :return: A list of IP addresses.
         """
-        import re
 
-        file = open("temp.log")
-        ipList = []
+        ip_list = []
 
-        for line in file:
-            ip = re.findall(r'[0-9]+(?:\.[0-9]+){3}', line)
-            ipList.append(ip)
+        ip_list.extend(CleanData(input_file).to_list())
 
+        return ExtractIPs(ip_list).get_ipv4_results()
+
+    def get_ipv6s_from_file(input_file):
+        """
+        https://stackoverflow.com/questions/14026529/python-parse-file-for-ip-addresses
+
+        Parse a .txt file for IPv4 and IPv6 addresses.
+
+        Args:
+            input_file: A .txt file to be parsed.
+
+        :return: A list of IP addresses.
+        """
+
+        ip_list = []
+
+        ip_list.extend(CleanData(input_file).to_list())
+
+        return ExtractIPs(ip_list).get_ipv4_results()
 
 class UnitTests(unittest.TestCase):
 
