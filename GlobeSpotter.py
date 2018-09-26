@@ -5,12 +5,15 @@ import tokenize
 import pydoc
 
 
-class main:
+class GlobeSpotter:
 
     def main(self):
         pass
 
-    def valid_ip(input_file):
+    def get_file(self):
+        return input("Please enter name of file.")
+
+    def valid_ip(self, input_file):
         """
         https://stackoverflow.com/questions/11264005/using-a-regex-to-match-ip-addresses-in-python/11264056
 
@@ -33,24 +36,23 @@ class main:
 
         return ip_list
 
+    def get_location_data(self, ip_list):
+        data = {}
 
-    # def get_ipv6s_from_file(input_file):
-    #     """
-    #     https://stackoverflow.com/questions/14026529/python-parse-file-for-ip-addresses
-    #
-    #     Parse a .txt file for IPv4 and IPv6 addresses.
-    #
-    #     Args:
-    #         input_file: A .txt file to be parsed.
-    #
-    #     :return: A list of IP addresses.
-    #     """
-    #
-    #     ip_list = []
-    #
-    #     ip_list.extend(CleanData(input_file).to_list())
-    #
-    #     return ExtractIPs(ip_list).get_ipv4_results()
+        for ip in ip_list:
+            data_list = []
+            #lookup geoip
+            #append geoip to list
+            #lookup rdap
+            #append rdap to list
+            #append list to dictionary
+
+
+
+
+    valid_ip(get_file)
+
+
 
 class UnitTests(unittest.TestCase):
 
