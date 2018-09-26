@@ -1,9 +1,9 @@
 import unittest
-import re
 import socket
 import tokenize
 import pydoc
 
+from geoip import geolite2
 
 class GlobeSpotter:
 
@@ -37,18 +37,25 @@ class GlobeSpotter:
         return ip_list
 
     def get_location_data(self, ip_list):
-        data = {}
+        geoip_and_ip_data = {}
 
         for ip in ip_list:
             data_list = []
-            #lookup geoip
-            #append geoip to list
-            #lookup rdap
-            #append rdap to list
-            #append list to dictionary
+
+            match = geolite2.lookup(ip)
+
+            if match is None:
+                data_list.append("No GeoIP data available")
+
+            data_list.append(match.country)
+            data_list.append(match.continent)
+            data_list.append(match.location)
+            data_list.append(match.timezone)
+            data_list.append(match.subdivisions)
 
 
-
+            data_list.append(rdap_lookup(ip))
+            geoip_and_ip_data.update({ip, data_list})
 
     valid_ip(get_file)
 
