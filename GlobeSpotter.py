@@ -3,7 +3,7 @@ import socket
 import tokenize
 import pydoc
 
-from geoip import geolite2
+from geoip import geolite2  #https://pythonhosted.org/python-geoip/
 
 class GlobeSpotter:
 
