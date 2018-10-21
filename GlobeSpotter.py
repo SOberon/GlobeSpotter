@@ -150,10 +150,18 @@ def get_rdap_data(ip_list):
 
     return rdap_data
 
-def display_geoip_and_rdap_data(geoip, rdap):
-    pass
 
-# TODO figure out a way to get print statements to work with unit tests. Super low priority.
+def display_geoip_and_rdap_data(geoip, rdap):
+    for key, value in geoip:
+        print(key)
+        print(value)
+
+    for key, value in rdap:
+        print(key)
+        print(value)
+
+
+# TODO figure out a way to get print statements to work with unit tests. Maybe.
 # class TestDisplayTitle(unittest.TestCase):
 #     def test_title(self):
 #         self.assertEqual("  _____ _       _           _____             _   _\n" +
@@ -240,7 +248,7 @@ class TestGetGeoipData(unittest.TestCase):
     #                                    'America/Los_Angeles', 'United States', 'North America']},
     #                      get_geoip_data(["2001:4860:0:2001::68"]))
 
-    def test_list_has_one_good_IPv4_geolite2_matche_and_some_junk(self):
+    def test_list_has_one_good_IPv4_geolite2_match_and_some_junk(self):
         self.assertEqual({"No GeoIP/location data available for this IP.":
                             ["None", "None", "None", "None", "None", "None", "None", "None", "None", "None"],
                           "17.0.0.1":
