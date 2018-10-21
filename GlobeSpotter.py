@@ -2,22 +2,25 @@ import unittest
 import ipaddress
 import csv
 import sys
-from geoip import geolite2  # https://pythonhosted.org/python-geoip/
+from geolite2 import geolite2  # https://pythonhosted.org/python-geoip/
 
 # class GlobeSpotter:
 # To run in terminal, python GlobeSpotter.py <filename>
-# fileName = sys.argv[1]
-fileName = "file.csv"
+# file_name = sys.argv[1]
+file_name = "file.csv"
 
-def __init__(self, file_name):
-    self.file_name = file_name
+
+def __init__(self, file):
+    self.file_name = file
+
 
 def main(self):
     valid_addresses = self.add_valid_addresses_to_list(self.file_name)
-    # geoip_data = get_geoip_Data(valid_addresses)
+    geoip_data = get_geoip_data(valid_addresses)
     # rdap_data = get_rdap_data(valid_addresses)
 
 
+# Checks if an IP address is valid by querying the ipaddress module. Bad IPs return a ValueError from ipaddress.
 def check_if_valid_address(ip):
     try:
         potential_address = ipaddress.ip_address(ip)
@@ -30,6 +33,7 @@ def check_if_valid_address(ip):
         return
 
 
+# Parses a .csv file for valid IP addresses and returns them as a list. Ignores any non-valid addresses.
 def add_valid_addresses_to_list(input_file):
     ip_list = []
 
@@ -43,31 +47,74 @@ def add_valid_addresses_to_list(input_file):
     return ip_list
 
 
-def get_location_data(ip_list):
-    geoip_and_rdap_data = {}
+# Iterates through a list of valid IP addresses and returns GeoIP location data as a dictionary value.
+def get_geoip_data(ip_list):
+    geoip_data = {}
+    reader = geolite2.reader()
+
+    # If ip_list is empty, stop doing work
+    if not ip_list:
+        geoip_data.update({"No valid IP addresses.": []})
+        return geoip_data
 
     for ip in ip_list:
         data_list = []
 
-        match = geolite2.lookup(ip)
+        try:
+            match = reader.get(ip)
 
-        if match is None:
-            data_list.append("No GeoIP data available")
+            if match is None:
+                geoip_data.update({"No data available in geolite2.":
+                                    ["None", "None", "None", "None", "None", "None", "None", "None", "None", "None"]})
 
-        else:
-            data_list.append(match.country)
-            data_list.append(match.continent)
-            data_list.append(match.location)
-            data_list.append(match.timezone)
-            data_list.append(match.subdivisions)
+                return geoip_data
 
-        # Append the following to data_list:
-        #     Registration country (maybe)
-        #     ISP name, address, abuse email (?)
-        #     If registered, the domain name
-        #     Registration and expiry dates
+            # City                  -> {'city': {'names': {'en': value}}
+            data_list.append(match.get('city', {}).get('names', {}).get('en'))
 
-        geoip_and_rdap_data.update({ip, data_list})
+            # Accuracy radius       -> {'location': {'longitude': value}}
+            data_list.append(match.get('location', {}).get('accuracy_radius'))
+
+            # Latitude              -> {'location': {'latitude': value}}
+            data_list.append(match.get('location', {}).get('latitude'))
+
+            # Longitude             -> {'location': {'longitude': value}}
+            data_list.append(match.get('location', {}).get('longitude'))
+
+            # Postal code           -> {'location': {'postal': value}}
+            data_list.append(match.get('location', {}).get('postal'))
+
+            # Metro code            -> {'location': {'metro_code': value}}
+            data_list.append(match.get('location', {}).get('metro_code'))
+
+            # State or subdivision  -> {'subdivisions': [{'names': {'en': value}}]} {key: list[key2: {key: value}]}
+            data_list.append(match.get('subdivisions')[0].get('names', {}).get('en'))
+
+            # Time zone             -> {'location': {'time_zone': value}}
+            data_list.append(match.get('location', {}).get('time_zone'))
+
+            # Country               -> {'country': {'names': {'en': value}}
+            data_list.append(match.get('country', {}).get('names', {}).get('en'))
+
+            # Continent             -> {'continent': {'names': {'en': }}
+            data_list.append(match.get('continent', {}).get('names', {}).get('en'))
+
+            geoip_data.update({ip: data_list})
+
+        except ValueError:
+            geoip_data.update({"No GeoIP/location data available for this IP.":
+                                   ["None", "None", "None", "None", "None", "None", "None", "None", "None", "None"]})
+
+    geolite2.close()
+    return geoip_data
+
+
+def get_rdap_data(ip_list):
+    pass
+
+
+def merge_geoip_and_ip_data(geoip_dict, rdap_dict):
+    pass
 
 
 class TestCheckIfValidAddress(unittest.TestCase):
@@ -112,24 +159,65 @@ class TestAddValidAddressesToList(unittest.TestCase):
                          add_valid_addresses_to_list("several_rows_of_valid_entries_and_some_junk.csv"))
 
 
-class TestGetLocationData(unittest.TestCase):
+class TestGetGeoipData(unittest.TestCase):
     def test_empty_list(self):
-        pass
+        self.assertEqual({"No valid IP addresses.":
+                              ["None", "None", "None", "None", "None", "None", "None", "None", "None", "None"]},
+                         get_geoip_data([]))
 
     def test_list_is_all_junk(self):
-        pass
+        self.assertEqual({"No GeoIP/location data available for this IP.":
+                              ["None", "None", "None", "None", "None", "None", "None", "None", "None", "None"]},
+                         get_geoip_data(["Foobar"]))
 
-    def test_list_has_one_good_geolite2_match(self):
-        pass
+    # def test_list_has_one_IPv4_geolite2_match_with_no_available_data(self):
+    #     self.assertEqual({"No data available.":
+    #                                 ["None", "None", "None", "None", "None", "None", "None", "None", "None", "None"]},
+    #                      get_geoip_data(["17.0.0.0"]))
 
-    def test_list_has_one_good_geolite2_match_and_some_junk(self):
-        pass
+    def test_list_has_one_good_IPv4_geolite2_match(self):
+        self.assertEqual({"17.0.0.1": ['Cupertino', 1000, 37.3042, -122.0946, None, 807, 'California',
+                                       'America/Los_Angeles', 'United States', 'North America']},
+                         get_geoip_data(["17.0.0.1"]))
 
-    def test_list_has_two_good_geolite2_matches(self):
-        pass
+    def test_list_has_one_IPv6_geolite2_match_with_no_available_data(self):
+        self.assertEqual({"No data available in geolite2.":
+                                    ["None", "None", "None", "None", "None", "None", "None", "None", "None", "None"]},
+                         get_geoip_data(["2001:db:8::"]))
 
-    def test_list_has_two_good_geolite2_matches_and_some_junk(self):
-        pass
+    # TODO IPv6 addresses aren't returning geolite2 results. Problem with my code, the database, or the IP addresses?
+    # def test_list_has_one_good_IPv6_geolite2_match(self):
+    #     self.assertEqual({"17.0.0.1": ['Cupertino', 1000, 37.3042, -122.0946, None, 807, 'California',
+    #                                    'America/Los_Angeles', 'United States', 'North America']},
+    #                      get_geoip_data(["2001:4860:0:2001::68"]))
+
+    def test_list_has_one_good_IPv4_geolite2_matche_and_some_junk(self):
+        self.assertEqual({"No GeoIP/location data available for this IP.":
+                            ["None", "None", "None", "None", "None", "None", "None", "None", "None", "None"],
+                          "17.0.0.1":
+                            ['Cupertino', 1000, 37.3042, -122.0946, None, 807, 'California', 'America/Los_Angeles',
+                             'United States', 'North America'],
+                          "No GeoIP/location data available for this IP.":
+                            ["None", "None", "None", "None", "None", "None", "None", "None", "None", "None"]},
+                         get_geoip_data(["Foobar", "17.0.0.1", "Barfoo"]))
+
+    def test_list_has_two_good_IPv4_geolite2_matches(self):
+        self.assertEqual({"17.0.0.1": ['Cupertino', 1000, 37.3042, -122.0946, None, 807, 'California',
+                                       'America/Los_Angeles', 'United States', 'North America'],
+                          "73.78.160.191": ['Aurora', 5, 39.6603, -104.7681, None, 751, 'Colorado',
+                                            'America/Denver', 'United States', 'North America']},
+                         get_geoip_data(["17.0.0.1", "73.78.160.191"]))
+
+    # def test_list_has_two_good_IPv6_geolite2_matches(self):
+    #     self.assertEqual({"17.0.0.1": ['Cupertino', 1000, 37.3042, -122.0946, None, 807, 'California',
+    #                                    'America/Los_Angeles', 'United States', 'North America']},
+    #                      get_geoip_data(["17.0.0.1"]))
+
+    # def test_list_has_one_good_IPv4_and_one_good_IPv6_geolite2_match(self):
+    #     self.assertEqual({"17.0.0.1": ['Cupertino', 1000, 37.3042, -122.0946, None, 807, 'California',
+    #                                    'America/Los_Angeles', 'United States', 'North America']},
+    #                      get_geoip_data(["17.0.0.1"]))
+
 
 if __name__ == '__main__':
     unittest.main()
