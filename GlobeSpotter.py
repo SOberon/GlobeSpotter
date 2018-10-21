@@ -2,7 +2,8 @@ import unittest
 import ipaddress
 import csv
 import sys
-from geolite2 import geolite2  # https://pythonhosted.org/python-geoip/
+from geolite2 import geolite2
+from ipwhois import IPWhois
 
 # class GlobeSpotter:
 # To run in terminal, python GlobeSpotter.py <filename>
@@ -15,9 +16,23 @@ def __init__(self, file):
 
 
 def main(self):
+    display_title()
     valid_addresses = self.add_valid_addresses_to_list(self.file_name)
     geoip_data = get_geoip_data(valid_addresses)
-    # rdap_data = get_rdap_data(valid_addresses)
+    rdap_data = get_rdap_data(valid_addresses)
+    display_geoip_and_rdap_data(geoip_data, rdap_data)
+
+
+# ASCII art tomfoolery
+def display_title():
+    print("  _____ _       _           _____             _   _\n" +
+          "/ ____| |      | |         / ____|           | | | |\n" +
+          "| |  __| | ___ | |__   ___| (___  _ __   ___ | |_| |_ ___ _ __\n" +
+          "| | |_ | |/ _ \| '_ \ / _ " + r"\\" + "___ \| '_ \ / _ \| __| __/ _ \ '__|\n" +
+          "| |__| | | (_) | |_) |  __/____) | |_) | (_) | |_| ||  __/ |\n" +
+          " \_____|_|\___/|_.__/ \___|_____/| .__/ \___/ \__|\__\___|_|\n" +
+          "                                 | |\n" +
+          "                                 |_|")
 
 
 # Checks if an IP address is valid by querying the ipaddress module. Bad IPs return a ValueError from ipaddress.
@@ -54,7 +69,8 @@ def get_geoip_data(ip_list):
 
     # If ip_list is empty, stop doing work
     if not ip_list:
-        geoip_data.update({"No valid IP addresses.": []})
+        geoip_data.update({"No valid IP addresses.":
+                               ["None", "None", "None", "None", "None", "None", "None", "None", "None", "None"]})
         return geoip_data
 
     for ip in ip_list:
@@ -110,11 +126,44 @@ def get_geoip_data(ip_list):
 
 
 def get_rdap_data(ip_list):
+    rdap_data = {}
+
+    # If ip_list is empty, stop doing work
+    if not ip_list:
+        rdap_data.update({"No valid IP addresses.":
+                               ["None", "None", "None", "None", "None", "None"]})
+        return rdap_data
+
+    for ip in ip_list:
+        data_list = []
+        obj = IPWhois(ip)
+        results = obj.lookup_rdap(depth=1)
+
+        data_list.append(results.get('asn'))
+        data_list.append(results.get('asn_cidr'))
+        data_list.append(results.get('asn_country_code'))
+        data_list.append(results.get('asn_date'))
+        data_list.append(results.get('asn_description'))
+        data_list.append(results.get('asn_registry'))
+
+        rdap_data.update({ip: data_list})
+
+    return rdap_data
+
+def display_geoip_and_rdap_data(geoip, rdap):
     pass
 
-
-def merge_geoip_and_ip_data(geoip_dict, rdap_dict):
-    pass
+# TODO figure out a way to get print statements to work with unit tests. Super low priority.
+# class TestDisplayTitle(unittest.TestCase):
+#     def test_title(self):
+#         self.assertEqual("  _____ _       _           _____             _   _\n" +
+#                          "/ ____| |      | |         / ____|           | | | |\n" +
+#                          "| |  __| | ___ | |__   ___| (___  _ __   ___ | |_| |_ ___ _ __\n" +
+#                          "| | |_ | |/ _ \| '_ \ / _ " + r"\\" + "___ \| '_ \ / _ \| __| __/ _ \ '__|\n" +
+#                          "| |__| | | (_) | |_) |  __/____) | |_) | (_) | |_| ||  __/ |\n" +
+#                          " \_____|_|\___/|_.__/ \___|_____/| .__/ \___/ \__|\__\___|_|\n" +
+#                          "                                 | |\n" +
+#                          "                                 |_|", display_title())
 
 
 class TestCheckIfValidAddress(unittest.TestCase):
@@ -217,6 +266,31 @@ class TestGetGeoipData(unittest.TestCase):
     #     self.assertEqual({"17.0.0.1": ['Cupertino', 1000, 37.3042, -122.0946, None, 807, 'California',
     #                                    'America/Los_Angeles', 'United States', 'North America']},
     #                      get_geoip_data(["17.0.0.1"]))
+
+
+class TestGetRdapData(unittest.TestCase):
+    def test_empty_list(self):
+        self.assertEqual({"No valid IP addresses.":
+                            ["None", "None", "None", "None", "None", "None"]},
+                         get_rdap_data([]))
+
+    def test_list_has_one_good_IPv4_whois_match(self):
+        self.assertEqual({"74.125.225.229":
+                            ['15169', '74.125.225.0/24', 'US', '2007-03-13', 'GOOGLE - Google LLC, US', 'arin']},
+                         get_rdap_data(['74.125.225.229']))
+
+    def test_list_has_two_good_IPv4_whois_matches(self):
+        self.assertEqual({"74.125.225.229":
+                            ['15169', '74.125.225.0/24', 'US', '2007-03-13', 'GOOGLE - Google LLC, US', 'arin'],
+                          "17.0.0.1":
+                              ['714', '17.0.0.0/21', 'US', '1990-04-16', 'APPLE-ENGINEERING - Apple Inc., US', 'arin']
+                          },
+                         get_rdap_data(['74.125.225.229', '17.0.0.1']))
+
+    def test_list_has_one_good_IPv6_whois_match(self):
+        self.assertEqual({"2001:4860:0:2001::68":
+                            ['15169', '2001:4860::/32', 'US', '2005-03-14', 'GOOGLE - Google LLC, US', 'arin']},
+                         get_rdap_data(['2001:4860:0:2001::68']))
 
 
 if __name__ == '__main__':
