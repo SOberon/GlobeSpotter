@@ -2,25 +2,45 @@ import unittest
 import ipaddress
 import csv
 import sys
-from geolite2 import geolite2
+from geolite2 import geolite2  # pip install maxminddb-geolite2
 from ipwhois import IPWhois
+import warnings
+from tabulate import tabulate  # pip install tabulate
+
+# Before running, terminal <.\venv\Scripts\activate.bat>
 
 # class GlobeSpotter:
 # To run in terminal, python GlobeSpotter.py <filename>
-# file_name = sys.argv[1]
-file_name = "file.csv"
+
+# The following two lines disable warnings by default. To re-enable, run program with -w.
+if not sys.warnoptions:
+    warnings.simplefilter("ignore")
+
+if len(sys.argv) > 1:
+    file_name = sys.argv[1]
+
+else:
+    # file_name = input("Please enter the name of a .csv file to be read: ")
+    file_name = "one_valid_entry.csv"
 
 
-def __init__(self, file):
-    self.file_name = file
+# def __init__(self, file):
+#     self.file_name = file
 
 
-def main(self):
+def main():
     print(display_title())
-    valid_addresses = self.add_valid_addresses_to_list(self.file_name)
+
+    valid_addresses = add_valid_addresses_to_list(file_name)
+    print(valid_addresses)
+
     geoip_data = get_geoip_data(valid_addresses)
+    print(geoip_data)
+
     rdap_data = get_rdap_data(valid_addresses)
-    display_geoip_and_rdap_data(geoip_data, rdap_data)
+    print(rdap_data)
+
+    # display_geoip_and_rdap_data(geoip_data, rdap_data)
 
 
 # ASCII art tomfoolery
@@ -35,6 +55,7 @@ def display_title():
           "                                 |_|")
 
     return st
+
 
 # Checks if an IP address is valid by querying the ipaddress module. Bad IPs return a ValueError from ipaddress.
 def check_if_valid_address(ip):
