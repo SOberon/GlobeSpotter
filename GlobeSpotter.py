@@ -16,7 +16,7 @@ def __init__(self, file):
 
 
 def main(self):
-    display_title()
+    print(display_title())
     valid_addresses = self.add_valid_addresses_to_list(self.file_name)
     geoip_data = get_geoip_data(valid_addresses)
     rdap_data = get_rdap_data(valid_addresses)
@@ -25,7 +25,7 @@ def main(self):
 
 # ASCII art tomfoolery
 def display_title():
-    print("  _____ _       _           _____             _   _\n" +
+    st = ("  _____ _       _           _____             _   _\n" +
           "/ ____| |      | |         / ____|           | | | |\n" +
           "| |  __| | ___ | |__   ___| (___  _ __   ___ | |_| |_ ___ _ __\n" +
           "| | |_ | |/ _ \| '_ \ / _ " + r"\\" + "___ \| '_ \ / _ \| __| __/ _ \ '__|\n" +
@@ -34,6 +34,7 @@ def display_title():
           "                                 | |\n" +
           "                                 |_|")
 
+    return st
 
 # Checks if an IP address is valid by querying the ipaddress module. Bad IPs return a ValueError from ipaddress.
 def check_if_valid_address(ip):
@@ -130,8 +131,7 @@ def get_rdap_data(ip_list):
 
     # If ip_list is empty, stop doing work
     if not ip_list:
-        rdap_data.update({"No valid IP addresses.":
-                               ["None", "None", "None", "None", "None", "None"]})
+        rdap_data.update({"No valid IP addresses.": ["None", "None", "None", "None", "None", "None"]})
         return rdap_data
 
     for ip in ip_list:
@@ -151,27 +151,81 @@ def get_rdap_data(ip_list):
     return rdap_data
 
 
+# TODO put edge cases as separate methods; I don't like the clutter of this method.
 def display_geoip_and_rdap_data(geoip, rdap):
-    for key, value in geoip:
-        print(key)
-        print(value)
+    output = ""
+    no_geoip = "No valid GeoIP data was passed in."
+    no_rdap = "No valid RDAP data was passed in."
+    sp = '{:<11}'.format('')  # GeoIP spacing. I know this variable name is awful.
+    rp = '{:<16}'.format('')  # RDAP spacing. I know this variable name is awful.
 
-    for key, value in rdap:
-        print(key)
-        print(value)
+    geoip_header = ("IP Address" + sp + "City" + sp + "Radius" + sp + "Latitude" + sp + "Longitude"
+                    + sp + "Postal Code" + sp + "Metro Code" + sp + "Subdivision" + sp + "Time Zone" + sp +
+                    "Country" + sp + "Continent")
+
+    rdap_header = ("IP Address" + rp + "ASN" + rp + "ASN CIDR" + rp + "ASN Country Code" + rp + "ASN Date" + rp +
+                   "ASN Description" + rp + "ASN Registry")
+
+    # If GeoIP and RDAP dicts are empty
+    if not geoip and not rdap:
+        return no_geoip + "\n" + no_rdap
+
+    # If RDAP dict is empty
+    if not rdap:
+        output = ''.join([output, geoip_header + "\n"])
+
+        for key, value in geoip.items():
+            output = ''.join([output, key + '{:10}'.format('')])
+            for item in value:
+                output = ''.join([output, '{:<20}'.format(str(item))])
+
+            output = ''.join([output, "\n\n"])
+            output = ''.join([output, no_rdap])
+
+        return output
+
+    # If GeoIP dict is empty
+    if not geoip:
+        output = ''.join([output, rdap_header + "\n"])
+
+        for key, value in rdap.items():
+            output = ''.join([output, key + '{:10}'.format('')])
+            for item in value:
+                output = ''.join([output, '{:<24}'.format(str(item))])
+
+            output = ''.join([output, "\n\n"])
+            output = ''.join([output, no_geoip])
+
+        return output
+
+    # If GeoIP and RDAP dicts are not empty; that is, not an edge case
+    output = ''.join([output, geoip_header + "\n"])
+    for key, value in geoip.items():
+        output = ''.join([output, key + '{:10}'.format('')])
+        for item in value:
+            output = ''.join([output, '{:<20}'.format(str(item))])
+
+        output = ''.join([output, "\n\n"])
+
+    output = ''.join([output, rdap_header + "\n"])
+    for key, value in rdap.items():
+        output = ''.join([output, key + '{:10}'.format('')])
+        for item in value:
+            output = ''.join([output, '{:<24}'.format(str(item))])
+
+    return output
 
 
-# TODO figure out a way to get print statements to work with unit tests. Maybe.
-# class TestDisplayTitle(unittest.TestCase):
-#     def test_title(self):
-#         self.assertEqual("  _____ _       _           _____             _   _\n" +
-#                          "/ ____| |      | |         / ____|           | | | |\n" +
-#                          "| |  __| | ___ | |__   ___| (___  _ __   ___ | |_| |_ ___ _ __\n" +
-#                          "| | |_ | |/ _ \| '_ \ / _ " + r"\\" + "___ \| '_ \ / _ \| __| __/ _ \ '__|\n" +
-#                          "| |__| | | (_) | |_) |  __/____) | |_) | (_) | |_| ||  __/ |\n" +
-#                          " \_____|_|\___/|_.__/ \___|_____/| .__/ \___/ \__|\__\___|_|\n" +
-#                          "                                 | |\n" +
-#                          "                                 |_|", display_title())
+class TestDisplayTitle(unittest.TestCase):
+     def test_title(self):
+        self.assertEqual("  _____ _       _           _____             _   _\n" +
+                         "/ ____| |      | |         / ____|           | | | |\n" +
+                         "| |  __| | ___ | |__   ___| (___  _ __   ___ | |_| |_ ___ _ __\n" +
+                         "| | |_ | |/ _ \| '_ \ / _ " + r"\\" + "___ \| '_ \ / _ \| __| __/ _ \ '__|\n" +
+                         "| |__| | | (_) | |_) |  __/____) | |_) | (_) | |_| ||  __/ |\n" +
+                         " \_____|_|\___/|_.__/ \___|_____/| .__/ \___/ \__|\__\___|_|\n" +
+                         "                                 | |\n" +
+                         "                                 |_|", display_title())
 
 
 class TestCheckIfValidAddress(unittest.TestCase):
@@ -301,5 +355,59 @@ class TestGetRdapData(unittest.TestCase):
                          get_rdap_data(['2001:4860:0:2001::68']))
 
 
+class TestDisplayGeoipAndRdapData(unittest.TestCase):
+    geoip_output = ("IP Address           City           Radius           Latitude           Longitude           "
+                    + "Postal Code           Metro Code           Subdivision           Time Zone           Country           "
+                    + "Continent\n17.0.0.1          Cupertino           1000                37.3042             "
+                    + "-122.0946           None                807                 California          America/Los_Angeles "
+                    + "United States       North America       ")
+
+    geoip_double_output = (geoip_output + "\n17.0.0.1          Cupertino           1000                37.3042             "
+                    + "-122.0946           None                807                 California          America/Los_Angeles "
+                    + "United States       North America       ")
+
+    rdap_output = ("IP Address                ASN                ASN CIDR                ASN Country Code        " +
+                   "        ASN Date                ASN Description                ASN Registry\n" +
+                   "74.125.225.229          15169                   74.125.225.0/24         US                   " +
+                   "   2007-03-13              GOOGLE - Google LLC, US arin                    ")
+
+    rdap_double_output = (rdap_output + "\n74.125.225.229          15169                   74.125.225.0/24         US                   " +
+                   "   2007-03-13              GOOGLE - Google LLC, US arin                    ")
+
+    geoip_dict = {"17.0.0.1": ['Cupertino', 1000, 37.3042, -122.0946, None, 807, 'California', 'America/Los_Angeles',
+                               'United States', 'North America']}
+
+    geoip_double_dict = {"17.0.0.1": ['Cupertino', 1000, 37.3042, -122.0946, None, 807, 'California', 'America/Los_Angeles',
+                               'United States', 'North America'],
+                         "73.78.160.191": ['Aurora', 5, 39.6603, -104.7681, None, 751, 'Colorado',
+                                            'America/Denver', 'United States', 'North America']}
+
+    rdap_dict = {"74.125.225.229": ['15169', '74.125.225.0/24', 'US', '2007-03-13', 'GOOGLE - Google LLC, US', 'arin'],}
+
+    rdap_double_dict = {"74.125.225.229": ['15169', '74.125.225.0/24', 'US', '2007-03-13', 'GOOGLE - Google LLC, US', 'arin'],
+                        "17.0.0.1": ['714', '17.0.0.0/21', 'US', '1990-04-16', 'APPLE-ENGINEERING - Apple Inc., US', 'arin']}
+
+    def test_empty_geoip_dict_and_empty_rdap_dict(self):
+        self.assertEqual("No valid GeoIP data was passed in.\nNo valid RDAP data was passed in.",
+                         display_geoip_and_rdap_data({}, {}))
+
+    def test_one_geoip_dict_and_empty_rdap_dict(self):
+        self.assertEqual(TestDisplayGeoipAndRdapData.geoip_output + "\n\nNo valid RDAP data was passed in.",
+                         display_geoip_and_rdap_data(TestDisplayGeoipAndRdapData.geoip_dict, {}))
+
+    def test_empty_geoip_dict_and_one_rdap_dict(self):
+        self.assertEqual(TestDisplayGeoipAndRdapData.rdap_output + "\n\nNo valid GeoIP data was passed in.",
+                         display_geoip_and_rdap_data({},TestDisplayGeoipAndRdapData.rdap_dict))
+
+    def test_one_good_geoip_dict_and_one_good_rdap_dict(self):
+        self.assertEqual(TestDisplayGeoipAndRdapData.geoip_output + "\n\n" + TestDisplayGeoipAndRdapData.rdap_output,
+            display_geoip_and_rdap_data(TestDisplayGeoipAndRdapData.geoip_dict, TestDisplayGeoipAndRdapData.rdap_dict))
+
+    def test_two_good_geoip_dicts_and_two_good_rdap_dicts(self):
+        self.assertEqual(TestDisplayGeoipAndRdapData.geoip_double_output + "\n\n" + TestDisplayGeoipAndRdapData.rdap_double_output,
+            display_geoip_and_rdap_data(TestDisplayGeoipAndRdapData.geoip_double_dict, TestDisplayGeoipAndRdapData.rdap_double_dict))
+
+
 if __name__ == '__main__':
-    unittest.main()
+    # unittest.main()
+    main()
