@@ -3,13 +3,16 @@ import ipaddress
 import csv
 import sys
 from geolite2 import geolite2           # pip install maxminddb-geolite2
-from ipwhois import IPWhois
+from ipwhois import IPWhois             # pip install whois
 import warnings
-from tabulate import tabulate           # pip install tabulate
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt         # pip install ??
 
 # Good list of sample IPs for testing https://tools.tracemyip.org/search--ip/list
 
 # Before running, terminal <.\venv\Scripts\activate.bat>
+# To exit venv, type deactivate
 
 # class GlobeSpotter:
 # To run in terminal, python GlobeSpotter.py <filename>
@@ -236,104 +239,111 @@ def get_rdap_data(ip_list):
 
 # TODO put edge cases as separate methods; I don't like the clutter of this method.
 def display_geoip_and_rdap_data(geoip, rdap):
-    # geoip_header = ["IP Address", "City", "Radius", "Latitude", "Longitude", "Postal Code", "Metro Code",
-    #                 "State/Region", "Time Zone", "Country", "Continent"]
-    #
-    # rdap_header = ["IP Address", "ASN", "ASN CIDR", "ASN Country Code", "ASN Date", "ASN Description", "ASN Registry"]
-    #
-    # no_geoip = "No valid GeoIP data was passed in."
-    # no_rdap = "No valid RDAP data was passed in."
-    #
-    # # If GeoIP and RDAP dicts are empty
-    # if not geoip and not rdap:
-    #     print(no_geoip + "\n" + no_rdap)
-    #
-    # # If RDAP dict is empty
-    # if not rdap:
-    #     print(tabulate(geoip, headers=geoip_header))
-    #     print("\n" + no_rdap)
-    #
-    # # If GeoIP dict is empty
-    # if not geoip:
-    #     print("\n" + no_geoip)
-    #     print(tabulate(rdap, headers=rdap_header))
-    #
-    # # If GeoIP and RDAP dicts are not empty; that is, not an edge case
-    # print(tabulate(geoip, headers=geoip_header) + "\n")
-    # print(tabulate(rdap, headers=rdap_header))
-    #
-    # # full_output = tabulate(geoip, headers=geoip_header) + "\n" + tabulate(rdap, headers=rdap_header)
-    #
-    # return
+    geoip_header = ["IP Address", "City", "Radius", "Latitude", "Longitude", "Postal Code", "Metro Code",
+                    "State/Region", "Time Zone", "Country", "Continent"]
 
-    output = ""
+    rdap_header = ["IP Address", "ASN", "ASN CIDR", "ASN Country Code", "ASN Date", "ASN Description", "ASN Registry"]
+
     no_geoip = "No valid GeoIP data was passed in."
     no_rdap = "No valid RDAP data was passed in."
 
-    sp = '{:>10}'.format('')  # GeoIP spacing
-    rp = '{:>10}'.format('')  # RDAP spacing
+    geoip_data_set = []
+    rdap_data_set = []
 
-    geoip_header = ("IP Address" + sp + "City" + sp + "Radius" + sp + "Latitude" + sp + "Longitude" + sp + "Postal Code"
-                    + sp + "Metro Code" + sp + "Subdivision" + sp + "Time Zone" + sp + "Country" + sp + "Continent\n" +
-                    "----------" + sp + "----" + sp + "------" + sp + "--------" + sp + "---------" + sp + "-----------"
-                    + sp + "----------" + sp + "-----------" + sp + "---------" + sp + "-------" + sp + "---------")
-
-
-    rdap_header = ("\nIP Address" + rp + "ASN" + rp + "ASN CIDR" + rp + "ASN Country Code" + rp + "ASN Date" + rp +
-                   "ASN Description" + rp + "ASN Registry\n" +
-                   "----------" + rp + "---" + rp + "--------" + rp + "----------------" + rp + "--------" + rp +
-                   "---------------" + rp + "------------")
-
-    # If GeoIP and RDAP dicts are empty
-    if not geoip and not rdap:
-        return no_geoip + "\n" + no_rdap
-
-    # If RDAP dict is empty
-    if not rdap:
-        output = ''.join([output, geoip_header + "\n"])
-
-        for key, value in geoip.items():
-            output = ''.join([output, key + '{:>10}'.format('')])
-            for item in value:
-                output = ''.join([output, '{:>20}'.format(str(item))])
-
-            output = ''.join([output, "\n\n"])
-            output = ''.join([output, no_rdap])
-
-        return output
-
-    # If GeoIP dict is empty
-    if not geoip:
-        output = ''.join([output, rdap_header + "\n"])
-
-        for key, value in rdap.items():
-            output = ''.join([output, key + '{:>10}'.format('')])
-            for item in value:
-                output = ''.join([output, '{:>24}'.format(str(item))])
-
-            output = ''.join([output, "\n\n"])
-            output = ''.join([output, no_geoip])
-
-        return output
-
-    # If GeoIP and RDAP dicts are not empty; that is, not an edge case
-    output = ''.join([output, geoip_header + "\n"])
     for key, value in geoip.items():
-        output = ''.join([output, key + '{:>10}'.format('')])
+        temp_list = [key]
         for item in value:
-            output = ''.join([output, '{:<15}'.format(str(item))])
+            temp_list.append(item)
 
-        output = ''.join([output, "\n"])
+        geoip_data_set.append(temp_list)
 
-    output = ''.join([output, "\n" + rdap_header + "\n"])
+    df = pd.DataFrame(data=geoip_data_set, columns=geoip_header)
+    # df.index = np.arange(1, len(df))
+    print(df)
+    print()
+
     for key, value in rdap.items():
-        output = ''.join([output, key + '{:>10}'.format('')])
+        temp_list = [key]
         for item in value:
-            output = ''.join([output, '{:<15}'.format(str(item))])
+            temp_list.append(item)
 
-        output = ''.join([output, "\n"])
+        rdap_data_set.append(temp_list)
 
-    return output
+    df = pd.DataFrame(data=rdap_data_set, columns=rdap_header)
+    # df.index = np.arange(1, len(df))
+    print(df)
+    print()
+
+    return
+
+    # output = ""
+    # no_geoip = "No valid GeoIP data was passed in."
+    # no_rdap = "No valid RDAP data was passed in."
+    #
+    # sp = '{:>10}'.format('')  # GeoIP spacing
+    # rp = '{:>10}'.format('')  # RDAP spacing
+    #
+    # geoip_header = ("IP Address" + sp + "City" + sp + "Radius" + sp + "Latitude" + sp + "Longitude" + sp + "Postal Code"
+    #                 + sp + "Metro Code" + sp + "Subdivision" + sp + "Time Zone" + sp + "Country" + sp + "Continent\n" +
+    #                 "----------" + sp + "----" + sp + "------" + sp + "--------" + sp + "---------" + sp + "-----------"
+    #                 + sp + "----------" + sp + "-----------" + sp + "---------" + sp + "-------" + sp + "---------")
+    #
+    #
+    # rdap_header = ("\nIP Address" + rp + "ASN" + rp + "ASN CIDR" + rp + "ASN Country Code" + rp + "ASN Date" + rp +
+    #                "ASN Description" + rp + "ASN Registry\n" +
+    #                "----------" + rp + "---" + rp + "--------" + rp + "----------------" + rp + "--------" + rp +
+    #                "---------------" + rp + "------------")
+    #
+    # # If GeoIP and RDAP dicts are empty
+    # if not geoip and not rdap:
+    #     return no_geoip + "\n" + no_rdap
+    #
+    # # If RDAP dict is empty
+    # if not rdap:
+    #     output = ''.join([output, geoip_header + "\n"])
+    #
+    #     for key, value in geoip.items():
+    #         output = ''.join([output, key + '{:>10}'.format('')])
+    #         for item in value:
+    #             output = ''.join([output, '{:>20}'.format(str(item))])
+    #
+    #         output = ''.join([output, "\n\n"])
+    #         output = ''.join([output, no_rdap])
+    #
+    #     return output
+    #
+    # # If GeoIP dict is empty
+    # if not geoip:
+    #     output = ''.join([output, rdap_header + "\n"])
+    #
+    #     for key, value in rdap.items():
+    #         output = ''.join([output, key + '{:>10}'.format('')])
+    #         for item in value:
+    #             output = ''.join([output, '{:>24}'.format(str(item))])
+    #
+    #         output = ''.join([output, "\n\n"])
+    #         output = ''.join([output, no_geoip])
+    #
+    #     return output
+    #
+    # # If GeoIP and RDAP dicts are not empty; that is, not an edge case
+    # output = ''.join([output, geoip_header + "\n"])
+    # for key, value in geoip.items():
+    #     output = ''.join([output, key + '{:>10}'.format('')])
+    #     for item in value:
+    #         output = ''.join([output, '{:<15}'.format(str(item))])
+    #
+    #     output = ''.join([output, "\n"])
+    #
+    # output = ''.join([output, "\n" + rdap_header + "\n"])
+    # for key, value in rdap.items():
+    #     output = ''.join([output, key + '{:>10}'.format('')])
+    #     for item in value:
+    #         output = ''.join([output, '{:<15}'.format(str(item))])
+    #
+    #     output = ''.join([output, "\n"])
+    #
+    # return output
 
 
 def count_valid_addresses(good, bad):
