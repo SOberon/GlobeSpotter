@@ -2,10 +2,12 @@ import unittest
 import ipaddress
 import csv
 import sys
-from geolite2 import geolite2  # pip install maxminddb-geolite2
+from geolite2 import geolite2           # pip install maxminddb-geolite2
 from ipwhois import IPWhois
 import warnings
-from tabulate import tabulate  # pip install tabulate
+from tabulate import tabulate           # pip install tabulate
+
+# Good list of sample IPs for testing https://tools.tracemyip.org/search--ip/list
 
 # Before running, terminal <.\venv\Scripts\activate.bat>
 
@@ -23,7 +25,10 @@ else:
     # file_name = input("Please enter the name of a .csv file to be read: ")
 
     # Uncomment for testing
-    file_name = "one_valid_entry.csv"
+    # file_name = "empty_file.csv"
+    # file_name = "one_valid_entry.csv"
+    # file_name = "two_rows_of_valid_entries.csv"
+    file_name = "test_file.csv"
 
 
 # def __init__(self, file):
@@ -36,15 +41,17 @@ def main():
     valid_addresses = add_valid_addresses_to_list(file_name)
 
     geoip_data = get_geoip_data(valid_addresses)
+    # print(geoip_data)
 
     rdap_data = get_rdap_data(valid_addresses)
+    # print(rdap_data)
 
-    display_geoip_and_rdap_data(geoip_data, rdap_data)
+    print(display_geoip_and_rdap_data(geoip_data, rdap_data))
 
 
 # ASCII art tomfoolery
 def display_title():
-    st = ("\n\n********************************************************************************\n" +
+    welcome = ("\n\n********************************************************************************\n" +
           " ****************************************************************************** \n" +
           "  _____ _       _           _____             _   _" + "                 .-'';'-.\n"
           " / ____| |     | |         / ____|           | | | |" + "              ,'   <_,-.`.\n"
@@ -57,9 +64,7 @@ def display_title():
           " ****************************************************************************** \n" +
           "********************************************************************************\n\n")
 
-
-
-    return st
+    return welcome
 
 
 # Checks if an IP address is valid by querying the ipaddress module. Bad IPs return a ValueError from ipaddress.
@@ -81,7 +86,7 @@ def add_valid_addresses_to_list(input_file):
     good = 0
     bad = 0
 
-    print("Reading file...")
+    print("Reading file...", end="", flush=True)
 
     with open(input_file, 'r') as file:
         reader = csv.reader(file)
@@ -93,7 +98,8 @@ def add_valid_addresses_to_list(input_file):
                 else:
                     bad += 1
 
-    print("Done\n")
+    print("Done.\n" +
+          "********************\n\n")
 
     count_valid_addresses(good, bad)
 
@@ -108,10 +114,15 @@ def get_geoip_data(ip_list):
     has_data = 0
     no_data = 0
 
+    print("Looking up GeoIP (location) data...", end="", flush=True)
+
     # If ip_list is empty, stop doing work
     if not ip_list:
+        count_valid_results("geolocation", has_data, no_data)
+
         geoip_data.update({"No valid IP addresses.":
                                ["None", "None", "None", "None", "None", "None", "None", "None", "None", "None"]})
+
         return geoip_data
 
     for ip in ip_list:
@@ -147,7 +158,10 @@ def get_geoip_data(ip_list):
             data_list.append(match.get('location', {}).get('metro_code'))
 
             # State or subdivision  -> {'subdivisions': [{'names': {'en': value}}]} {key: list[key2: {key: value}]}
-            data_list.append(match.get('subdivisions')[0].get('names', {}).get('en'))
+            if match.get('subdivisions'):
+                data_list.append(match.get('subdivisions')[0].get('names', {}).get('en'))
+            else:
+                data_list.append(None)
 
             # Time zone             -> {'location': {'time_zone': value}}
             data_list.append(match.get('location', {}).get('time_zone'))
@@ -161,6 +175,7 @@ def get_geoip_data(ip_list):
             geoip_data.update({ip: data_list})
 
             has_data += 1
+            print('.', end="", flush=True)
 
         except ValueError:
             geoip_data.update({"No GeoIP/location data available for this IP.":
@@ -177,12 +192,19 @@ def get_rdap_data(ip_list):
     has_data = 0
     no_data = 0
 
+    print("Looking up RDAP (internet service provider) data.\n" +
+          "Depending on the size of the file, this may take some time...", end="", flush=True)
+
     # If ip_list is empty, stop doing work
     if not ip_list:
+        count_valid_results("ISP", has_data, no_data)
+
         rdap_data.update({"No valid IP addresses.": ["None", "None", "None", "None", "None", "None"]})
+
         return rdap_data
 
     for ip in ip_list:
+
         data_list = []
         obj = IPWhois(ip)
         results = obj.lookup_rdap(depth=1)
@@ -197,6 +219,7 @@ def get_rdap_data(ip_list):
         rdap_data.update({ip: data_list})
 
         has_data += 1
+        print('.', end="", flush=True)
 
     count_valid_results("ISP", has_data, no_data)
 
@@ -205,18 +228,53 @@ def get_rdap_data(ip_list):
 
 # TODO put edge cases as separate methods; I don't like the clutter of this method.
 def display_geoip_and_rdap_data(geoip, rdap):
+    # geoip_header = ["IP Address", "City", "Radius", "Latitude", "Longitude", "Postal Code", "Metro Code",
+    #                 "State/Region", "Time Zone", "Country", "Continent"]
+    #
+    # rdap_header = ["IP Address", "ASN", "ASN CIDR", "ASN Country Code", "ASN Date", "ASN Description", "ASN Registry"]
+    #
+    # no_geoip = "No valid GeoIP data was passed in."
+    # no_rdap = "No valid RDAP data was passed in."
+    #
+    # # If GeoIP and RDAP dicts are empty
+    # if not geoip and not rdap:
+    #     print(no_geoip + "\n" + no_rdap)
+    #
+    # # If RDAP dict is empty
+    # if not rdap:
+    #     print(tabulate(geoip, headers=geoip_header))
+    #     print("\n" + no_rdap)
+    #
+    # # If GeoIP dict is empty
+    # if not geoip:
+    #     print("\n" + no_geoip)
+    #     print(tabulate(rdap, headers=rdap_header))
+    #
+    # # If GeoIP and RDAP dicts are not empty; that is, not an edge case
+    # print(tabulate(geoip, headers=geoip_header) + "\n")
+    # print(tabulate(rdap, headers=rdap_header))
+    #
+    # # full_output = tabulate(geoip, headers=geoip_header) + "\n" + tabulate(rdap, headers=rdap_header)
+    #
+    # return
+
     output = ""
     no_geoip = "No valid GeoIP data was passed in."
     no_rdap = "No valid RDAP data was passed in."
-    sp = '{:<11}'.format('')  # GeoIP spacing. I know this variable name is awful.
-    rp = '{:<16}'.format('')  # RDAP spacing. I know this variable name is awful.
 
-    geoip_header = ("IP Address" + sp + "City" + sp + "Radius" + sp + "Latitude" + sp + "Longitude"
-                    + sp + "Postal Code" + sp + "Metro Code" + sp + "Subdivision" + sp + "Time Zone" + sp +
-                    "Country" + sp + "Continent")
+    sp = '{:>10}'.format('')  # GeoIP spacing
+    rp = '{:>10}'.format('')  # RDAP spacing
 
-    rdap_header = ("IP Address" + rp + "ASN" + rp + "ASN CIDR" + rp + "ASN Country Code" + rp + "ASN Date" + rp +
-                   "ASN Description" + rp + "ASN Registry")
+    geoip_header = ("IP Address" + sp + "City" + sp + "Radius" + sp + "Latitude" + sp + "Longitude" + sp + "Postal Code"
+                    + sp + "Metro Code" + sp + "Subdivision" + sp + "Time Zone" + sp + "Country" + sp + "Continent\n" +
+                    "----------" + sp + "----" + sp + "------" + sp + "--------" + sp + "---------" + sp + "-----------"
+                    + sp + "----------" + sp + "-----------" + sp + "---------" + sp + "-------" + sp + "---------")
+
+
+    rdap_header = ("\nIP Address" + rp + "ASN" + rp + "ASN CIDR" + rp + "ASN Country Code" + rp + "ASN Date" + rp +
+                   "ASN Description" + rp + "ASN Registry\n" +
+                   "----------" + rp + "---" + rp + "--------" + rp + "----------------" + rp + "--------" + rp +
+                   "---------------" + rp + "------------")
 
     # If GeoIP and RDAP dicts are empty
     if not geoip and not rdap:
@@ -227,9 +285,9 @@ def display_geoip_and_rdap_data(geoip, rdap):
         output = ''.join([output, geoip_header + "\n"])
 
         for key, value in geoip.items():
-            output = ''.join([output, key + '{:10}'.format('')])
+            output = ''.join([output, key + '{:>10}'.format('')])
             for item in value:
-                output = ''.join([output, '{:<20}'.format(str(item))])
+                output = ''.join([output, '{:>20}'.format(str(item))])
 
             output = ''.join([output, "\n\n"])
             output = ''.join([output, no_rdap])
@@ -241,9 +299,9 @@ def display_geoip_and_rdap_data(geoip, rdap):
         output = ''.join([output, rdap_header + "\n"])
 
         for key, value in rdap.items():
-            output = ''.join([output, key + '{:10}'.format('')])
+            output = ''.join([output, key + '{:>10}'.format('')])
             for item in value:
-                output = ''.join([output, '{:<24}'.format(str(item))])
+                output = ''.join([output, '{:>24}'.format(str(item))])
 
             output = ''.join([output, "\n\n"])
             output = ''.join([output, no_geoip])
@@ -253,49 +311,55 @@ def display_geoip_and_rdap_data(geoip, rdap):
     # If GeoIP and RDAP dicts are not empty; that is, not an edge case
     output = ''.join([output, geoip_header + "\n"])
     for key, value in geoip.items():
-        output = ''.join([output, key + '{:10}'.format('')])
+        output = ''.join([output, key + '{:>10}'.format('')])
         for item in value:
-            output = ''.join([output, '{:<20}'.format(str(item))])
+            output = ''.join([output, '{:<15}'.format(str(item))])
 
-        output = ''.join([output, "\n\n"])
+        output = ''.join([output, "\n"])
 
-    output = ''.join([output, rdap_header + "\n"])
+    output = ''.join([output, "\n" + rdap_header + "\n"])
     for key, value in rdap.items():
-        output = ''.join([output, key + '{:10}'.format('')])
+        output = ''.join([output, key + '{:>10}'.format('')])
         for item in value:
-            output = ''.join([output, '{:<24}'.format(str(item))])
+            output = ''.join([output, '{:<15}'.format(str(item))])
+
+        output = ''.join([output, "\n"])
 
     return output
 
 
 def count_valid_addresses(good, bad):
     if good is 1:
-        print(str(good) + " token matching an IP address was found in file.")
+        print("1 token matching an IP address was found in file.")
 
     else:
         print(str(good) + " tokens matching IP addresses were found in file.")
 
     if bad is 1:
-        print(str(bad) + " token not matching an IP address (junk token) was found in file.\n")
+        print("1 token not matching an IP address (junk token) was found in file.\n" +
+              "******************************************************************\n\n")
 
     else:
-        print(str(bad) + " tokens not matching IP addresses (junk tokens) were found in file.\n")
+        print(str(bad) + " tokens not matching IP addresses (junk tokens) were found in file.\n" +
+              "************************************************************************\n\n")
 
 
 def count_valid_results(field, has_data, no_data):
-    print("IP addresses scanned for " + field + " data.")
+    print("Done.\n")
 
     if has_data is 1:
-        print("Results were found for " + str(has_data) + " address.")
+        print("Results were found for 1 address.")
 
     else:
-        print("Results were found for " + str(has_data) + " address.")
+        print("Results were found for " + str(has_data) + " addresses.")
 
     if no_data is 1:
-        print("No results are available for " + str(no_data) + " address.\n")
+        print("No results are available for 1 address.\n" +
+              "***************************************\n\n")
 
     else:
-        print("No results are available for " + str(no_data) + " address.\n")
+        print("No results are available for " + str(no_data) + " addresses.\n" +
+              "******************************************\n\n")
 
 
 # class TestDisplayTitle(unittest.TestCase):
@@ -444,9 +508,9 @@ class TestDisplayGeoipAndRdapData(unittest.TestCase):
                     + "-122.0946           None                807                 California          America/Los_Angeles "
                     + "United States       North America       ")
 
-    geoip_double_output = (geoip_output + "\n17.0.0.1          Cupertino           1000                37.3042             "
-                    + "-122.0946           None                807                 California          America/Los_Angeles "
-                    + "United States       North America       ")
+    geoip_double_output = (geoip_output + "\n73.78.160.191          Aurora              5                   39.6603" +
+                           "             -104.7681           None                751                 Colorado" +
+                           "            America/Denver      United States       North America       ")
 
     rdap_output = ("IP Address                ASN                ASN CIDR                ASN Country Code        " +
                    "        ASN Date                ASN Description                ASN Registry\n" +
