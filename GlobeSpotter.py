@@ -64,7 +64,7 @@ def display_title():
                "  _____ _       _           _____             _   _" + "                 .-'';'-.\n"
                " / ____| |     | |         / ____|           | | | |" + "              ,'   <_,-.`.\n"
                "| |  __| | ___ | |__   ___| (___  _ __   ___ | |_| |_ ___ _ __" + "   /)   ,--,_>\_\\\n"
-               "| | |_ | |/ _ \| '_ \ / _ " + r"\\" + "___ \| '_ \ / _ \| __| __/ _ \ '__|" + " |'   (       \_|\n"
+               "| | |_ | |/ _ \| '_ \ / _ " + r"\\" + "___ \| '_ \ / _ \| __| __/ _ \ '__|" + " |'   (   x   \_|\n"
                "| |__| | | (_) | |_) |  __/____) | |_) | (_) | |_| ||  __/ |" + "    |_    `-.    / |\n"
                " \_____|_|\___/|_.__/ \___|_____/| .__/ \___/ \__|\__\___|_|" + "     \`-.   ;  _(`/\n"
                "                                 | |" + "                              `.(    \/ ,'\n"
@@ -201,7 +201,7 @@ def get_rdap_data(ip_list):
     no_data = 0
 
     print("Looking up RDAP (internet service provider) data.\n" +
-          "Depending on the size of the file, this may take some time...", end="", flush=True)
+          "Depending on the number of valid IP tokens, this may take some time...", end="", flush=True)
 
     # If ip_list is empty, stop doing work
     if not ip_list:
