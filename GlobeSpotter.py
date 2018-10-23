@@ -21,6 +21,8 @@ if len(sys.argv) > 1:
 
 else:
     # file_name = input("Please enter the name of a .csv file to be read: ")
+
+    # Uncomment for testing
     file_name = "one_valid_entry.csv"
 
 
@@ -32,27 +34,30 @@ def main():
     print(display_title())
 
     valid_addresses = add_valid_addresses_to_list(file_name)
-    print(valid_addresses)
 
     geoip_data = get_geoip_data(valid_addresses)
-    print(geoip_data)
 
     rdap_data = get_rdap_data(valid_addresses)
-    print(rdap_data)
 
-    # display_geoip_and_rdap_data(geoip_data, rdap_data)
+    display_geoip_and_rdap_data(geoip_data, rdap_data)
 
 
 # ASCII art tomfoolery
 def display_title():
-    st = ("  _____ _       _           _____             _   _\n" +
-          "/ ____| |      | |         / ____|           | | | |\n" +
-          "| |  __| | ___ | |__   ___| (___  _ __   ___ | |_| |_ ___ _ __\n" +
-          "| | |_ | |/ _ \| '_ \ / _ " + r"\\" + "___ \| '_ \ / _ \| __| __/ _ \ '__|\n" +
-          "| |__| | | (_) | |_) |  __/____) | |_) | (_) | |_| ||  __/ |\n" +
-          " \_____|_|\___/|_.__/ \___|_____/| .__/ \___/ \__|\__\___|_|\n" +
-          "                                 | |\n" +
-          "                                 |_|")
+    st = ("\n\n********************************************************************************\n" +
+          " ****************************************************************************** \n" +
+          "  _____ _       _           _____             _   _" + "                 .-'';'-.\n"
+          " / ____| |     | |         / ____|           | | | |" + "              ,'   <_,-.`.\n"
+          "| |  __| | ___ | |__   ___| (___  _ __   ___ | |_| |_ ___ _ __" + "   /)   ,--,_>\_\\\n"
+          "| | |_ | |/ _ \| '_ \ / _ " + r"\\" + "___ \| '_ \ / _ \| __| __/ _ \ '__|" + " |'   (       \_|\n"
+          "| |__| | | (_) | |_) |  __/____) | |_) | (_) | |_| ||  __/ |" + "    |_    `-.    / |\n"
+          " \_____|_|\___/|_.__/ \___|_____/| .__/ \___/ \__|\__\___|_|" + "     \`-.   ;  _(`/\n"
+          "                                 | |" + "                              `.(    \/ ,'\n"
+          "                                 |_|" + "                                `-....-'\n" +
+          " ****************************************************************************** \n" +
+          "********************************************************************************\n\n")
+
+
 
     return st
 
@@ -73,6 +78,10 @@ def check_if_valid_address(ip):
 # Parses a .csv file for valid IP addresses and returns them as a list. Ignores any non-valid addresses.
 def add_valid_addresses_to_list(input_file):
     ip_list = []
+    good = 0
+    bad = 0
+
+    print("Reading file...")
 
     with open(input_file, 'r') as file:
         reader = csv.reader(file)
@@ -80,6 +89,13 @@ def add_valid_addresses_to_list(input_file):
             for token in row:
                 if check_if_valid_address(token) is not None:
                     ip_list.append(token)
+                    good += 1
+                else:
+                    bad += 1
+
+    print("Done\n")
+
+    count_valid_addresses(good, bad)
 
     return ip_list
 
@@ -88,6 +104,9 @@ def add_valid_addresses_to_list(input_file):
 def get_geoip_data(ip_list):
     geoip_data = {}
     reader = geolite2.reader()
+
+    has_data = 0
+    no_data = 0
 
     # If ip_list is empty, stop doing work
     if not ip_list:
@@ -105,7 +124,9 @@ def get_geoip_data(ip_list):
                 geoip_data.update({"No data available in geolite2.":
                                     ["None", "None", "None", "None", "None", "None", "None", "None", "None", "None"]})
 
-                return geoip_data
+                no_data += 1
+                break
+                # return geoip_data
 
             # City                  -> {'city': {'names': {'en': value}}
             data_list.append(match.get('city', {}).get('names', {}).get('en'))
@@ -139,9 +160,13 @@ def get_geoip_data(ip_list):
 
             geoip_data.update({ip: data_list})
 
+            has_data += 1
+
         except ValueError:
             geoip_data.update({"No GeoIP/location data available for this IP.":
                                    ["None", "None", "None", "None", "None", "None", "None", "None", "None", "None"]})
+
+    count_valid_results("geolocation", has_data, no_data)
 
     geolite2.close()
     return geoip_data
@@ -149,6 +174,8 @@ def get_geoip_data(ip_list):
 
 def get_rdap_data(ip_list):
     rdap_data = {}
+    has_data = 0
+    no_data = 0
 
     # If ip_list is empty, stop doing work
     if not ip_list:
@@ -168,6 +195,10 @@ def get_rdap_data(ip_list):
         data_list.append(results.get('asn_registry'))
 
         rdap_data.update({ip: data_list})
+
+        has_data += 1
+
+    count_valid_results("ISP", has_data, no_data)
 
     return rdap_data
 
@@ -237,16 +268,46 @@ def display_geoip_and_rdap_data(geoip, rdap):
     return output
 
 
-class TestDisplayTitle(unittest.TestCase):
-     def test_title(self):
-        self.assertEqual("  _____ _       _           _____             _   _\n" +
-                         "/ ____| |      | |         / ____|           | | | |\n" +
-                         "| |  __| | ___ | |__   ___| (___  _ __   ___ | |_| |_ ___ _ __\n" +
-                         "| | |_ | |/ _ \| '_ \ / _ " + r"\\" + "___ \| '_ \ / _ \| __| __/ _ \ '__|\n" +
-                         "| |__| | | (_) | |_) |  __/____) | |_) | (_) | |_| ||  __/ |\n" +
-                         " \_____|_|\___/|_.__/ \___|_____/| .__/ \___/ \__|\__\___|_|\n" +
-                         "                                 | |\n" +
-                         "                                 |_|", display_title())
+def count_valid_addresses(good, bad):
+    if good is 1:
+        print(str(good) + " token matching an IP address was found in file.")
+
+    else:
+        print(str(good) + " tokens matching IP addresses were found in file.")
+
+    if bad is 1:
+        print(str(bad) + " token not matching an IP address (junk token) was found in file.\n")
+
+    else:
+        print(str(bad) + " tokens not matching IP addresses (junk tokens) were found in file.\n")
+
+
+def count_valid_results(field, has_data, no_data):
+    print("IP addresses scanned for " + field + " data.")
+
+    if has_data is 1:
+        print("Results were found for " + str(has_data) + " address.")
+
+    else:
+        print("Results were found for " + str(has_data) + " address.")
+
+    if no_data is 1:
+        print("No results are available for " + str(no_data) + " address.\n")
+
+    else:
+        print("No results are available for " + str(no_data) + " address.\n")
+
+
+# class TestDisplayTitle(unittest.TestCase):
+#      def test_title(self):
+#         self.assertEqual("  _____ _       _           _____             _   _\n" +
+#                          " / ____| |     | |         / ____|           | | | |\n" +
+#                          "| |  __| | ___ | |__   ___| (___  _ __   ___ | |_| |_ ___ _ __\n" +
+#                          "| | |_ | |/ _ \| '_ \ / _ " + r"\\" + "___ \| '_ \ / _ \| __| __/ _ \ '__|\n" +
+#                          "| |__| | | (_) | |_) |  __/____) | |_) | (_) | |_| ||  __/ |\n" +
+#                          " \_____|_|\___/|_.__/ \___|_____/| .__/ \___/ \__|\__\___|_|\n" +
+#                          "                                 | |\n" +
+#                          "                                 |_|\n", display_title())
 
 
 class TestCheckIfValidAddress(unittest.TestCase):
@@ -268,7 +329,7 @@ class TestAddValidAddressesToList(unittest.TestCase):
         self.assertEqual([], add_valid_addresses_to_list("no_valid_entries.csv"))
 
     def test_file_with_one_valid_entry(self):
-        self.assertEqual(["192.168.0.1"], add_valid_addresses_to_list("one_valid_entry.csv"))
+        self.assertEqual(["17.0.0.1"], add_valid_addresses_to_list("one_valid_entry.csv"))
 
     def test_file_with_one_valid_entry_and_some_junk(self):
         self.assertEqual(["192.168.0.1"], add_valid_addresses_to_list("one_valid_entry_and_some_junk.csv"))
@@ -340,15 +401,15 @@ class TestGetGeoipData(unittest.TestCase):
                                             'America/Denver', 'United States', 'North America']},
                          get_geoip_data(["17.0.0.1", "73.78.160.191"]))
 
-    # def test_list_has_two_good_IPv6_geolite2_matches(self):
-    #     self.assertEqual({"17.0.0.1": ['Cupertino', 1000, 37.3042, -122.0946, None, 807, 'California',
-    #                                    'America/Los_Angeles', 'United States', 'North America']},
-    #                      get_geoip_data(["17.0.0.1"]))
+    def test_list_has_two_good_IPv6_geolite2_matches(self):
+        self.assertEqual({"17.0.0.1": ['Cupertino', 1000, 37.3042, -122.0946, None, 807, 'California',
+                                       'America/Los_Angeles', 'United States', 'North America']},
+                         get_geoip_data(["17.0.0.1"]))
 
-    # def test_list_has_one_good_IPv4_and_one_good_IPv6_geolite2_match(self):
-    #     self.assertEqual({"17.0.0.1": ['Cupertino', 1000, 37.3042, -122.0946, None, 807, 'California',
-    #                                    'America/Los_Angeles', 'United States', 'North America']},
-    #                      get_geoip_data(["17.0.0.1"]))
+    def test_list_has_one_good_IPv4_and_one_good_IPv6_geolite2_match(self):
+        self.assertEqual({"17.0.0.1": ['Cupertino', 1000, 37.3042, -122.0946, None, 807, 'California',
+                                       'America/Los_Angeles', 'United States', 'North America']},
+                         get_geoip_data(["17.0.0.1"]))
 
 
 class TestGetRdapData(unittest.TestCase):
