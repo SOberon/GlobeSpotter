@@ -18,17 +18,11 @@ from tabulate import tabulate           # pip install tabulate
 if not sys.warnoptions:
     warnings.simplefilter("ignore")
 
-if len(sys.argv) > 1:
-    file_name = sys.argv[1]
-
-else:
-    # file_name = input("Please enter the name of a .csv file to be read: ")
-
     # Uncomment for testing
     # file_name = "empty_file.csv"
     # file_name = "one_valid_entry.csv"
     # file_name = "two_rows_of_valid_entries.csv"
-    file_name = "test_file.csv"
+    # file_name = "test_file.csv"
 
 
 # def __init__(self, file):
@@ -37,6 +31,8 @@ else:
 
 def main():
     print(display_title())
+
+    file_name = prompt_for_file()
 
     valid_addresses = add_valid_addresses_to_list(file_name)
 
@@ -49,20 +45,32 @@ def main():
     print(display_geoip_and_rdap_data(geoip_data, rdap_data))
 
 
+def prompt_for_file():
+    if len(sys.argv) > 1:
+        file_name = sys.argv[1]
+
+    else:
+        print("Tip of the day: a file name may be passed in as an argument when opening the program." +
+              " Example: python GlobeSpotter.py file.csv\n")
+        file_name = input("Please enter the name of a .csv file to be read: ")
+
+    return file_name
+
+
 # ASCII art tomfoolery
 def display_title():
     welcome = ("\n\n********************************************************************************\n" +
-          " ****************************************************************************** \n" +
-          "  _____ _       _           _____             _   _" + "                 .-'';'-.\n"
-          " / ____| |     | |         / ____|           | | | |" + "              ,'   <_,-.`.\n"
-          "| |  __| | ___ | |__   ___| (___  _ __   ___ | |_| |_ ___ _ __" + "   /)   ,--,_>\_\\\n"
-          "| | |_ | |/ _ \| '_ \ / _ " + r"\\" + "___ \| '_ \ / _ \| __| __/ _ \ '__|" + " |'   (       \_|\n"
-          "| |__| | | (_) | |_) |  __/____) | |_) | (_) | |_| ||  __/ |" + "    |_    `-.    / |\n"
-          " \_____|_|\___/|_.__/ \___|_____/| .__/ \___/ \__|\__\___|_|" + "     \`-.   ;  _(`/\n"
-          "                                 | |" + "                              `.(    \/ ,'\n"
-          "                                 |_|" + "                                `-....-'\n" +
-          " ****************************************************************************** \n" +
-          "********************************************************************************\n\n")
+               " ****************************************************************************** \n" +
+               "  _____ _       _           _____             _   _" + "                 .-'';'-.\n"
+               " / ____| |     | |         / ____|           | | | |" + "              ,'   <_,-.`.\n"
+               "| |  __| | ___ | |__   ___| (___  _ __   ___ | |_| |_ ___ _ __" + "   /)   ,--,_>\_\\\n"
+               "| | |_ | |/ _ \| '_ \ / _ " + r"\\" + "___ \| '_ \ / _ \| __| __/ _ \ '__|" + " |'   (       \_|\n"
+               "| |__| | | (_) | |_) |  __/____) | |_) | (_) | |_| ||  __/ |" + "    |_    `-.    / |\n"
+               " \_____|_|\___/|_.__/ \___|_____/| .__/ \___/ \__|\__\___|_|" + "     \`-.   ;  _(`/\n"
+               "                                 | |" + "                              `.(    \/ ,'\n"
+               "                                 |_|" + "                                `-....-'\n" +
+               " ****************************************************************************** \n" +
+               "********************************************************************************\n\n")
 
     return welcome
 
@@ -359,19 +367,7 @@ def count_valid_results(field, has_data, no_data):
 
     else:
         print("No results are available for " + str(no_data) + " addresses.\n" +
-              "******************************************\n\n")
-
-
-# class TestDisplayTitle(unittest.TestCase):
-#      def test_title(self):
-#         self.assertEqual("  _____ _       _           _____             _   _\n" +
-#                          " / ____| |     | |         / ____|           | | | |\n" +
-#                          "| |  __| | ___ | |__   ___| (___  _ __   ___ | |_| |_ ___ _ __\n" +
-#                          "| | |_ | |/ _ \| '_ \ / _ " + r"\\" + "___ \| '_ \ / _ \| __| __/ _ \ '__|\n" +
-#                          "| |__| | | (_) | |_) |  __/____) | |_) | (_) | |_| ||  __/ |\n" +
-#                          " \_____|_|\___/|_.__/ \___|_____/| .__/ \___/ \__|\__\___|_|\n" +
-#                          "                                 | |\n" +
-#                          "                                 |_|\n", display_title())
+              "*****************************************\n\n")
 
 
 class TestCheckIfValidAddress(unittest.TestCase):
