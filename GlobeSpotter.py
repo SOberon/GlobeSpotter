@@ -8,6 +8,8 @@ import warnings
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt         # pip install ??
+import datetime
+
 
 # Good list of sample IPs for testing https://tools.tracemyip.org/search--ip/list
 
@@ -20,16 +22,6 @@ import matplotlib.pyplot as plt         # pip install ??
 # The following two lines disable warnings by default. To re-enable, run program with -w.
 if not sys.warnoptions:
     warnings.simplefilter("ignore")
-
-    # Uncomment for testing
-    # file_name = "empty_file.csv"
-    # file_name = "one_valid_entry.csv"
-    # file_name = "two_rows_of_valid_entries.csv"
-    # file_name = "test_file.csv"
-
-
-# def __init__(self, file):
-#     self.file_name = file
 
 
 def main():
@@ -45,19 +37,9 @@ def main():
     rdap_data = get_rdap_data(valid_addresses)
     # print(rdap_data)
 
-    print(display_geoip_and_rdap_data(geoip_data, rdap_data))
+    geoip_and_rdap_values = display_geoip_and_rdap_data(geoip_data, rdap_data)
 
-
-def prompt_for_file():
-    if len(sys.argv) > 1:
-        file_name = sys.argv[1]
-
-    else:
-        print("Tip of the day: a file name may be passed in as an argument when opening the program." +
-              " Example: python GlobeSpotter.py file.csv\n")
-        file_name = input("Please enter the name of a .csv file to be read: ")
-
-    return file_name
+    retry_csv_or_exit(geoip_and_rdap_values[0], geoip_and_rdap_values[1])
 
 
 # ASCII art tomfoolery
@@ -76,6 +58,54 @@ def display_title():
                "********************************************************************************\n\n")
 
     return welcome
+
+
+# If a file is not passed in as a command line argument, prompts the user for a file name.
+def prompt_for_file():
+    if len(sys.argv) > 1:
+        file_name = sys.argv[1]
+
+    else:
+        print("Tip of the day: a file name may be passed in as an argument when opening the program." +
+              " Example: python GlobeSpotter.py file.csv\n")
+        file_name = input("Please enter the name of a .csv file to be read: ")
+
+    # try:
+    #     fh = open('/path/to/file', 'r')
+    #
+    # except FileNotFoundError:
+    #     # Keep preset values
+
+    return file_name
+
+
+# Checks that the given file is valid.
+# def check_if_file_name_is_valid(file_name):
+#     try:
+#         fh = open('file_name', 'r')
+#         fh.close()
+#         return
+#
+#     except FileNotFoundError:
+    # Keep preset values
+
+    # valid_file = False
+
+    # If file is in immediate folder:
+    #   valid_file = True
+
+    # Else:
+        # Search recursively for file
+        # If file is found:
+            # valid_file = True
+
+        # If file is still not found:
+            # Prompt for new_file_name
+            # check_if_file_name_is_valid(new_file_name)
+
+
+
+    pass
 
 
 # Checks if an IP address is valid by querying the ipaddress module. Bad IPs return a ValueError from ipaddress.
@@ -129,7 +159,7 @@ def get_geoip_data(ip_list):
 
     # If ip_list is empty, stop doing work
     if not ip_list:
-        count_valid_results("geolocation", has_data, no_data)
+        count_valid_results("GeoIP", has_data, no_data)
 
         geoip_data.update({"No valid IP addresses.":
                                ["None", "None", "None", "None", "None", "None", "None", "None", "None", "None"]})
@@ -192,7 +222,7 @@ def get_geoip_data(ip_list):
             geoip_data.update({"No GeoIP/location data available for this IP.":
                                    ["None", "None", "None", "None", "None", "None", "None", "None", "None", "None"]})
 
-    count_valid_results("geolocation", has_data, no_data)
+    count_valid_results("GeoIP", has_data, no_data)
 
     geolite2.close()
     return geoip_data
@@ -208,7 +238,7 @@ def get_rdap_data(ip_list):
 
     # If ip_list is empty, stop doing work
     if not ip_list:
-        count_valid_results("ISP", has_data, no_data)
+        count_valid_results("RDAP", has_data, no_data)
 
         rdap_data.update({"No valid IP addresses.": ["None", "None", "None", "None", "None", "None"]})
 
@@ -232,7 +262,7 @@ def get_rdap_data(ip_list):
         has_data += 1
         print('.', end="", flush=True)
 
-    count_valid_results("ISP", has_data, no_data)
+    count_valid_results("RDAP", has_data, no_data)
 
     return rdap_data
 
@@ -257,9 +287,9 @@ def display_geoip_and_rdap_data(geoip, rdap):
 
         geoip_data_set.append(temp_list)
 
-    df = pd.DataFrame(data=geoip_data_set, columns=geoip_header)
-    # df.index = np.arange(1, len(df))
-    print(df)
+    geoip_dataframe = pd.DataFrame(data=geoip_data_set, columns=geoip_header)
+    # geoip_dataframe.index = np.arange(1, len(geoip_dataframe))
+    print(geoip_dataframe)
     print()
 
     for key, value in rdap.items():
@@ -269,81 +299,12 @@ def display_geoip_and_rdap_data(geoip, rdap):
 
         rdap_data_set.append(temp_list)
 
-    df = pd.DataFrame(data=rdap_data_set, columns=rdap_header)
-    # df.index = np.arange(1, len(df))
-    print(df)
+    rdap_dataframe = pd.DataFrame(data=rdap_data_set, columns=rdap_header)
+    # rdap_dataframe.index = np.arange(1, len(rdap_dataframe))
+    print(rdap_dataframe)
     print()
 
-    return
-
-    # output = ""
-    # no_geoip = "No valid GeoIP data was passed in."
-    # no_rdap = "No valid RDAP data was passed in."
-    #
-    # sp = '{:>10}'.format('')  # GeoIP spacing
-    # rp = '{:>10}'.format('')  # RDAP spacing
-    #
-    # geoip_header = ("IP Address" + sp + "City" + sp + "Radius" + sp + "Latitude" + sp + "Longitude" + sp + "Postal Code"
-    #                 + sp + "Metro Code" + sp + "Subdivision" + sp + "Time Zone" + sp + "Country" + sp + "Continent\n" +
-    #                 "----------" + sp + "----" + sp + "------" + sp + "--------" + sp + "---------" + sp + "-----------"
-    #                 + sp + "----------" + sp + "-----------" + sp + "---------" + sp + "-------" + sp + "---------")
-    #
-    #
-    # rdap_header = ("\nIP Address" + rp + "ASN" + rp + "ASN CIDR" + rp + "ASN Country Code" + rp + "ASN Date" + rp +
-    #                "ASN Description" + rp + "ASN Registry\n" +
-    #                "----------" + rp + "---" + rp + "--------" + rp + "----------------" + rp + "--------" + rp +
-    #                "---------------" + rp + "------------")
-    #
-    # # If GeoIP and RDAP dicts are empty
-    # if not geoip and not rdap:
-    #     return no_geoip + "\n" + no_rdap
-    #
-    # # If RDAP dict is empty
-    # if not rdap:
-    #     output = ''.join([output, geoip_header + "\n"])
-    #
-    #     for key, value in geoip.items():
-    #         output = ''.join([output, key + '{:>10}'.format('')])
-    #         for item in value:
-    #             output = ''.join([output, '{:>20}'.format(str(item))])
-    #
-    #         output = ''.join([output, "\n\n"])
-    #         output = ''.join([output, no_rdap])
-    #
-    #     return output
-    #
-    # # If GeoIP dict is empty
-    # if not geoip:
-    #     output = ''.join([output, rdap_header + "\n"])
-    #
-    #     for key, value in rdap.items():
-    #         output = ''.join([output, key + '{:>10}'.format('')])
-    #         for item in value:
-    #             output = ''.join([output, '{:>24}'.format(str(item))])
-    #
-    #         output = ''.join([output, "\n\n"])
-    #         output = ''.join([output, no_geoip])
-    #
-    #     return output
-    #
-    # # If GeoIP and RDAP dicts are not empty; that is, not an edge case
-    # output = ''.join([output, geoip_header + "\n"])
-    # for key, value in geoip.items():
-    #     output = ''.join([output, key + '{:>10}'.format('')])
-    #     for item in value:
-    #         output = ''.join([output, '{:<15}'.format(str(item))])
-    #
-    #     output = ''.join([output, "\n"])
-    #
-    # output = ''.join([output, "\n" + rdap_header + "\n"])
-    # for key, value in rdap.items():
-    #     output = ''.join([output, key + '{:>10}'.format('')])
-    #     for item in value:
-    #         output = ''.join([output, '{:<15}'.format(str(item))])
-    #
-    #     output = ''.join([output, "\n"])
-    #
-    # return output
+    return [geoip_dataframe, rdap_dataframe]
 
 
 def count_valid_addresses(good, bad):
@@ -366,18 +327,60 @@ def count_valid_results(field, has_data, no_data):
     print("Done.\n")
 
     if has_data is 1:
-        print("Results were found for 1 address.")
+        print(field + " results were found for 1 address.")
 
     else:
-        print("Results were found for " + str(has_data) + " addresses.")
+        print(field + " results were found for " + str(has_data) + " addresses.")
 
     if no_data is 1:
-        print("No results are available for 1 address.\n" +
+        print("No " + field + " results are available for 1 address.\n" +
               "***************************************\n\n")
 
     else:
-        print("No results are available for " + str(no_data) + " addresses.\n" +
+        print("No " + field + " results are available for " + str(no_data) + " addresses.\n" +
               "*****************************************\n\n")
+
+
+def retry_csv_or_exit(geoip_dataframe, rdap_dataframe):
+    menu = ("[R] to read a new file\n" +
+            "[C] to output current results as .csv\n" +
+            "[J] to output current results as a JSon object\n" +
+            "[X] or [Enter] to exit: ")
+
+    choice = input(menu)
+
+    while choice not in 'rcjx':
+        choice = input(choice + " is not a valid input\n" + menu)
+
+    if choice is 'r':
+        main()
+
+    elif choice is 'c':
+        output_results_to_csv(geoip_dataframe, rdap_dataframe)
+
+    elif choice is 'j':
+        output_results_to_json(geoip_dataframe, rdap_dataframe)
+
+    elif choice is 'x':
+        exit()
+
+    return
+
+
+def output_results_to_csv(geoip_results, rdap_results):
+    timestamp = datetime.datetime.now().strftime("%y-%m-%d-%H-%M")
+    filename = "GlobeSpotter_results" + timestamp + ".csv"
+
+    geoip_results.to_csv(filename)
+    rdap_results.to_csv(filename, mode='a')
+
+    print("All results outputted to " + filename)
+
+    return
+
+
+def output_results_to_json(geoip_results, rdap_results):
+    pass
 
 
 class TestCheckIfValidAddress(unittest.TestCase):
