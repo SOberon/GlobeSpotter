@@ -424,7 +424,11 @@ def search_results(geoip_results):
         print(results_dataframe)
         print("\n")
 
-        exit_options(geoip_results)
+    yn = input("Output the results of this search to .csv? [Y/N]: ")
+    if yn is 'y':
+        output_csv(results_dataframe)
+
+    exit_options(geoip_results)
 
 
 def sort_results(geoip_results):
@@ -444,6 +448,10 @@ def sort_results(geoip_results):
 
     print(results_dataframe)
     print("\n")
+
+    yn = input("Output the results of this sort to .csv? [Y/N]: ")
+    if yn is 'y':
+        output_csv(results_dataframe)
 
     exit_options(geoip_results)
 
@@ -468,6 +476,10 @@ def final_counter(geoip_results):
 
     print(results_dataframe)
     print("\n")
+
+    yn = input("Output the results of this count to .csv? [Y/N]: ")
+    if yn is 'y':
+        output_csv(results_dataframe)
 
     exit_options(geoip_results)
 
