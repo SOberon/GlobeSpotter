@@ -4,12 +4,15 @@ import csv
 import sys
 from geolite2 import geolite2           # pip install maxminddb-geolite2
 from ipwhois import IPWhois             # pip install whois
+# import whois                          # pip install python-whois
 import warnings
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt         # pip install ??
 import datetime
+import math
 
+
+# pip freeze > requirements.txt
+# pip install -r requirements.txt
 
 # Good list of sample IPs for testing https://tools.tracemyip.org/search--ip/list
 
@@ -27,19 +30,19 @@ if not sys.warnoptions:
 def main():
     print(display_title())
 
-    file_name = prompt_for_file()
+    file_name = get_file()
 
-    valid_addresses = add_valid_addresses_to_list(file_name)
+    valid_addresses = store_verified_addresses(file_name)
 
-    geoip_data = get_geoip_data(valid_addresses)
-    # print(geoip_data)
+    geoip_data = lookup_geoip(valid_addresses)
 
-    rdap_data = get_rdap_data(valid_addresses)
-    # print(rdap_data)
+    # rdap_data = lookup_rdap(valid_addresses)
 
-    geoip_and_rdap_values = display_geoip_and_rdap_data(geoip_data, rdap_data)
+    # geoip_and_rdap_values = display_data(geoip_data, rdap_data)
+    geoip_and_rdap_values = display_data(geoip_data)
 
-    retry_csv_or_exit(geoip_and_rdap_values[0], geoip_and_rdap_values[1])
+    # exit_options(geoip_and_rdap_values[0], geoip_and_rdap_values[1])
+    exit_options(geoip_and_rdap_values[0])
 
 
 # ASCII art tomfoolery
@@ -61,20 +64,8 @@ def display_title():
 
 
 # If a file is not passed in as a command line argument, prompts the user for a file name.
-def prompt_for_file():
-    if len(sys.argv) > 1:
-        file_name = sys.argv[1]
-
-    else:
-        print("Tip of the day: a file name may be passed in as an argument when opening the program." +
-              " Example: python GlobeSpotter.py file.csv\n")
-        file_name = input("Please enter the name of a .csv file to be read: ")
-
-    # try:
-    #     fh = open('/path/to/file', 'r')
-    #
-    # except FileNotFoundError:
-    #     # Keep preset values
+def get_file():
+    file_name = input("Please enter the name of a .csv or .log file to be read: ")
 
     return file_name
 
@@ -104,12 +95,8 @@ def prompt_for_file():
             # check_if_file_name_is_valid(new_file_name)
 
 
-
-    pass
-
-
 # Checks if an IP address is valid by querying the ipaddress module. Bad IPs return a ValueError from ipaddress.
-def check_if_valid_address(ip):
+def verify_address(ip):
     try:
         potential_address = ipaddress.ip_address(ip)
         return str(potential_address)
@@ -122,7 +109,7 @@ def check_if_valid_address(ip):
 
 
 # Parses a .csv file for valid IP addresses and returns them as a list. Ignores any non-valid addresses.
-def add_valid_addresses_to_list(input_file):
+def store_verified_addresses(input_file):
     ip_list = []
     good = 0
     bad = 0
@@ -133,22 +120,21 @@ def add_valid_addresses_to_list(input_file):
         reader = csv.reader(file)
         for row in reader:
             for token in row:
-                if check_if_valid_address(token) is not None:
+                if verify_address(token) is not None:
                     ip_list.append(token)
                     good += 1
                 else:
                     bad += 1
 
-    print("Done.\n" +
-          "********************\n\n")
+    print(" Done.\n" + "********************\n\n")
 
-    count_valid_addresses(good, bad)
+    count_addresses(good, bad)
 
     return ip_list
 
 
 # Iterates through a list of valid IP addresses and returns GeoIP location data as a dictionary value.
-def get_geoip_data(ip_list):
+def lookup_geoip(ip_list):
     geoip_data = {}
     reader = geolite2.reader()
 
@@ -159,10 +145,10 @@ def get_geoip_data(ip_list):
 
     # If ip_list is empty, stop doing work
     if not ip_list:
-        count_valid_results("GeoIP", has_data, no_data)
+        count_results("GeoIP", has_data, no_data)
 
-        geoip_data.update({"No valid IP addresses.":
-                               ["None", "None", "None", "None", "None", "None", "None", "None", "None", "None"]})
+        geoip_data.update({"No valid IP addresses.": ["None", "None", "None", "None", "None", "None", "None", "None",
+                                                      "None", "None"]})
 
         return geoip_data
 
@@ -173,11 +159,12 @@ def get_geoip_data(ip_list):
             match = reader.get(ip)
 
             if match is None:
-                geoip_data.update({"No data available in geolite2.":
-                                    ["None", "None", "None", "None", "None", "None", "None", "None", "None", "None"]})
+                geoip_data.update(
+                    {"No data": ["No data", "No data", "No data", "No data", "No data", "No data", "No data",
+                                 "No data", "No data", "No data"]})
 
                 no_data += 1
-                break
+                continue
                 # return geoip_data
 
             # City                  -> {'city': {'names': {'en': value}}
@@ -192,11 +179,11 @@ def get_geoip_data(ip_list):
             # Longitude             -> {'location': {'longitude': value}}
             data_list.append(match.get('location', {}).get('longitude'))
 
-            # Postal code           -> {'location': {'postal': value}}
-            data_list.append(match.get('location', {}).get('postal'))
+            # Postal code           -> {'postal': {'code': value}}
+            data_list.append(match.get('postal', {}).get('code'))
 
             # Metro code            -> {'location': {'metro_code': value}}
-            data_list.append(match.get('location', {}).get('metro_code'))
+            data_list.append(str(match.get('location', {}).get('metro_code')))
 
             # State or subdivision  -> {'subdivisions': [{'names': {'en': value}}]} {key: list[key2: {key: value}]}
             if match.get('subdivisions'):
@@ -219,60 +206,67 @@ def get_geoip_data(ip_list):
             print('.', end="", flush=True)
 
         except ValueError:
-            geoip_data.update({"No GeoIP/location data available for this IP.":
-                                   ["None", "None", "None", "None", "None", "None", "None", "None", "None", "None"]})
+            geoip_data.update({"No data": ["No data", "No data", "No data", "No data", "No data", "No data", "No data",
+                                           "No data", "No data", "No data"]})
 
-    count_valid_results("GeoIP", has_data, no_data)
+    count_results("GeoIP", has_data, no_data)
 
     geolite2.close()
+
     return geoip_data
 
 
-def get_rdap_data(ip_list):
-    rdap_data = {}
-    has_data = 0
-    no_data = 0
-
-    print("Looking up RDAP (internet service provider) data.\n" +
-          "Depending on the number of valid IP tokens, this may take some time...", end="", flush=True)
-
-    # If ip_list is empty, stop doing work
-    if not ip_list:
-        count_valid_results("RDAP", has_data, no_data)
-
-        rdap_data.update({"No valid IP addresses.": ["None", "None", "None", "None", "None", "None"]})
-
-        return rdap_data
-
-    for ip in ip_list:
-
-        data_list = []
-        obj = IPWhois(ip)
-        results = obj.lookup_rdap(depth=1)
-
-        data_list.append(results.get('asn'))
-        data_list.append(results.get('asn_cidr'))
-        data_list.append(results.get('asn_country_code'))
-        data_list.append(results.get('asn_date'))
-        data_list.append(results.get('asn_description'))
-        data_list.append(results.get('asn_registry'))
-
-        rdap_data.update({ip: data_list})
-
-        has_data += 1
-        print('.', end="", flush=True)
-
-    count_valid_results("RDAP", has_data, no_data)
-
-    return rdap_data
+# def lookup_rdap(ip_list):
+    # rdap_data = {}
+    # has_data = 0
+    # no_data = 0
+    #
+    # print("Looking up RDAP (internet service provider) data.\n" +
+    #       "Depending on the number of valid IP tokens, this may take some time...", end="", flush=True)
+    #
+    # # If ip_list is empty, stop doing work
+    # if not ip_list:
+    #     count_results("RDAP", has_data, no_data)
+    #
+    #     rdap_data.update({"No data.": ["No data", "No data", "No data", "No data", "No data", "No data"]})
+    #
+    #     return rdap_data
+    #
+    # for ip in ip_list:
+    #     try:
+    #         data_list = []
+    #         obj = IPWhois(ip)
+    #         results = obj.lookup_rdap(depth=1)
+    #
+    #         data_list.append(results.get('asn'))
+    #         data_list.append(results.get('asn_cidr'))
+    #         data_list.append(results.get('asn_country_code'))
+    #         data_list.append(results.get('asn_date'))
+    #         data_list.append(results.get('asn_description'))
+    #         data_list.append(results.get('asn_registry'))
+    #
+    #         rdap_data.update({ip: data_list})
+    #
+    #         has_data += 1
+    #         print('.', end="", flush=True)
+    #
+    #     except:
+    #         rdap_data.update({ip: ["No data", "No data", "No data", "No data", "No data", "No data"]})
+    #         no_data += 1
+    #         print('.', end="", flush=True)
+    #
+    # count_results("RDAP", has_data, no_data)
+    #
+    # return rdap_data
 
 
 # TODO put edge cases as separate methods; I don't like the clutter of this method.
-def display_geoip_and_rdap_data(geoip, rdap):
+# def display_data(geoip, rdap):
+def display_data(geoip):
     geoip_header = ["IP Address", "City", "Radius", "Latitude", "Longitude", "Postal Code", "Metro Code",
-                    "State/Region", "Time Zone", "Country", "Continent"]
+                    "Region", "Time Zone", "Country", "Continent"]
 
-    rdap_header = ["IP Address", "ASN", "ASN CIDR", "ASN Country Code", "ASN Date", "ASN Description", "ASN Registry"]
+    rdap_header = ["IP Address", "ASN", "Supernet", "Country Code", "ASN Date", "Description", "Registry"]
 
     no_geoip = "No valid GeoIP data was passed in."
     no_rdap = "No valid RDAP data was passed in."
@@ -288,26 +282,26 @@ def display_geoip_and_rdap_data(geoip, rdap):
         geoip_data_set.append(temp_list)
 
     geoip_dataframe = pd.DataFrame(data=geoip_data_set, columns=geoip_header)
-    # geoip_dataframe.index = np.arange(1, len(geoip_dataframe))
     print(geoip_dataframe)
     print()
 
-    for key, value in rdap.items():
-        temp_list = [key]
-        for item in value:
-            temp_list.append(item)
+    # for key, value in rdap.items():
+    #     temp_list = [key]
+    #     for item in value:
+    #         temp_list.append(item)
+    #
+    #     rdap_data_set.append(temp_list)
+    #
+    # rdap_dataframe = pd.DataFrame(data=rdap_data_set, columns=rdap_header)
+    # print(rdap_dataframe)
+    # print()
 
-        rdap_data_set.append(temp_list)
+    # return [geoip_dataframe, rdap_dataframe]
 
-    rdap_dataframe = pd.DataFrame(data=rdap_data_set, columns=rdap_header)
-    # rdap_dataframe.index = np.arange(1, len(rdap_dataframe))
-    print(rdap_dataframe)
-    print()
-
-    return [geoip_dataframe, rdap_dataframe]
+    return [geoip_dataframe]
 
 
-def count_valid_addresses(good, bad):
+def count_addresses(good, bad):
     if good is 1:
         print("1 token matching an IP address was found in file.")
 
@@ -323,7 +317,7 @@ def count_valid_addresses(good, bad):
               "************************************************************************\n\n")
 
 
-def count_valid_results(field, has_data, no_data):
+def count_results(field, has_data, no_data):
     print("Done.\n")
 
     if has_data is 1:
@@ -341,25 +335,40 @@ def count_valid_results(field, has_data, no_data):
               "*****************************************\n\n")
 
 
-def retry_csv_or_exit(geoip_dataframe, rdap_dataframe):
-    menu = ("[R] to read a new file\n" +
+# def exit_options(geoip_dataframe, rdap_dataframe):
+def exit_options(geoip_dataframe):
+    menu = ("\n[R] to read a new file\n" +
+            "[S] to search results\n" +
+            "[O] to sort results\n" +
+            "[N] to count results\n" +
             "[C] to output current results as .csv\n" +
-            "[J] to output current results as a JSon object\n" +
+            "[J] to output current results as a JSON object\n" +
             "[X] or [Enter] to exit: ")
 
     choice = input(menu)
 
-    while choice not in 'rcjx':
-        choice = input(choice + " is not a valid input\n" + menu)
+    while choice not in 'rsoncjx':
+        choice = input(choice + "\n is not a valid input\n" + menu)
 
     if choice is 'r':
         main()
 
+    elif choice is 's':
+        search_results(geoip_dataframe)
+
+    elif choice is 'o':
+        sort_results(geoip_dataframe)
+
+    elif choice is 'n':
+        final_counter(geoip_dataframe)
+
     elif choice is 'c':
-        output_results_to_csv(geoip_dataframe, rdap_dataframe)
+        # output_csv(geoip_dataframe, rdap_dataframe)
+        output_csv(geoip_dataframe)
 
     elif choice is 'j':
-        output_results_to_json(geoip_dataframe, rdap_dataframe)
+        # output_json(geoip_dataframe, rdap_dataframe)
+        output_json(geoip_dataframe)
 
     elif choice is 'x':
         exit()
@@ -367,95 +376,175 @@ def retry_csv_or_exit(geoip_dataframe, rdap_dataframe):
     return
 
 
-def output_results_to_csv(geoip_results, rdap_results):
+# def output_csv(geoip_results, rdap_results):
+def output_csv(geoip_results):
     timestamp = datetime.datetime.now().strftime("%y-%m-%d-%H-%M")
     filename = "GlobeSpotter_results" + timestamp + ".csv"
 
     geoip_results.to_csv(filename)
-    rdap_results.to_csv(filename, mode='a')
+    # rdap_results.to_csv(filename, mode='a')
 
     print("All results outputted to " + filename)
 
     return
 
 
-def output_results_to_json(geoip_results, rdap_results):
+# def output_json(geoip_results, rdap_results):
+def output_json(geoip_results):
     pass
+
+
+def search_results(geoip_results):
+    geoip_header = ["IP address", "City", "Radius", "Latitude", "Longitude", "Postal Code", "Metro Code",
+                    "Region", "Time Zone", "Country", "Continent"]
+
+    column = input("\nPlease select a column to search in, or [X] to return to menu.\n" +
+                   "Valid columns are " + str(geoip_header) + ": ")
+
+    if column == 'x':
+        exit_options(geoip_results)
+
+    while column not in geoip_header:
+        column = input("\nInvalid entry. Valid columns are " + str(geoip_header))
+
+    value = input("Please enter a value to search for, or [X] to return to menu: ")
+
+    if value == 'x':
+        exit_options(geoip_results)
+
+    results_dataframe = geoip_results[geoip_results[column].notnull() & (geoip_results[column] == value)]
+
+    if results_dataframe.empty:
+        print("\nNo results found in " + str(column) + " for " + str(value) + ".")
+        print("\n")
+
+        exit_options(geoip_results)
+
+    else:
+        print(results_dataframe)
+        print("\n")
+
+        exit_options(geoip_results)
+
+
+def sort_results(geoip_results):
+    geoip_header = ["IP Address", "City", "Radius", "Latitude", "Longitude", "Postal Code", "Metro Code",
+                    "Region", "Time Zone", "Country", "Continent"]
+
+    column = input("\nPlease select a column to sort by, or [X] to return to menu.\n" +
+                   "Valid columns are " + str(geoip_header) + ": ")
+
+    if column == 'x':
+        exit_options(geoip_results)
+
+    while column not in geoip_header:
+        column = input("\nInvalid entry. Valid columns are " + str(geoip_header)).capitalize()
+
+    results_dataframe = geoip_results.sort_values(by=[column])
+
+    print(results_dataframe)
+    print("\n")
+
+    exit_options(geoip_results)
+
+
+def final_counter(geoip_results):
+    geoip_header = ["IP Address", "City", "Radius", "Latitude", "Longitude", "Postal Code", "Metro Code",
+                    "Region", "Time Zone", "Country", "Continent"]
+
+    column = input("\nThis function allows at-a-glance interpretation of data by counting repeated values.\n" +
+                   "Please select a column to count by, or [X] to exit.\n" +
+                   "Valid columns are " + str(geoip_header) + ": ")
+
+    print("\n")
+
+    if column == 'x':
+        exit_options(geoip_results)
+
+    while column not in geoip_header:
+        column = input("\nInvalid entry. Valid columns are " + str(geoip_header)).capitalize()
+
+    results_dataframe = geoip_results[column].value_counts()
+
+    print(results_dataframe)
+    print("\n")
+
+    exit_options(geoip_results)
 
 
 class TestCheckIfValidAddress(unittest.TestCase):
     def test_IPv4_address_is_valid(self):
-        self.assertEqual("192.168.0.1", check_if_valid_address('192.168.0.1'))
+        self.assertEqual("192.168.0.1", verify_address('192.168.0.1'))
 
     def test_IPv6_address_is_valid(self):
-        self.assertEqual("2001:db:8::", check_if_valid_address('2001:db:8::'))
+        self.assertEqual("2001:db:8::", verify_address('2001:db:8::'))
 
     def test_IP_address_is_not_valid(self):
-        self.assertEqual(None, check_if_valid_address("Foobar"))
+        self.assertEqual(None, verify_address("Foobar"))
 
 
 class TestAddValidAddressesToList(unittest.TestCase):
     def test_empty_file(self):
-        self.assertEqual([], add_valid_addresses_to_list("empty_file.csv"))
+        self.assertEqual([], store_verified_addresses("empty_file.csv"))
 
     def test_file_with_no_valid_entries(self):
-        self.assertEqual([], add_valid_addresses_to_list("no_valid_entries.csv"))
+        self.assertEqual([], store_verified_addresses("no_valid_entries.csv"))
 
     def test_file_with_one_valid_entry(self):
-        self.assertEqual(["17.0.0.1"], add_valid_addresses_to_list("one_valid_entry.csv"))
+        self.assertEqual(["17.0.0.1"], store_verified_addresses("one_valid_entry.csv"))
 
     def test_file_with_one_valid_entry_and_some_junk(self):
-        self.assertEqual(["192.168.0.1"], add_valid_addresses_to_list("one_valid_entry_and_some_junk.csv"))
+        self.assertEqual(["192.168.0.1"], store_verified_addresses("one_valid_entry_and_some_junk.csv"))
 
     def test_file_with_one_row_of_valid_entry_and_some_junk(self):
-        self.assertEqual(["192.168.0.1"], add_valid_addresses_to_list("one_row_of_valid_entry_and_some_junk.csv"))
+        self.assertEqual(["192.168.0.1"], store_verified_addresses("one_row_of_valid_entry_and_some_junk.csv"))
 
     def test_file_with_two_rows_of_valid_entries(self):
         self.assertEqual(['192.168.0.1', '2001:db:8::', '2001:db:8::', '192.168.0.1'],
-                         add_valid_addresses_to_list("two_rows_of_valid_entries.csv"))
+                         store_verified_addresses("two_rows_of_valid_entries.csv"))
 
     def test_file_with_two_rows_of_valid_entries_and_some_junk(self):
         self.assertEqual(["192.168.0.1", "192.168.0.1", "2001:db:8::"],
-                         add_valid_addresses_to_list("two_rows_of_valid_entries_and_some_junk.csv"))
+                         store_verified_addresses("two_rows_of_valid_entries_and_some_junk.csv"))
 
     def test_file_with_several_rows_of_valid_entries_and_some_junk(self):
         self.assertEqual(["192.168.0.1", "192.168.0.1", "192.168.0.1", "2001:db:8::", "192.168.0.1", "2001:db:8::",
                           "192.168.0.1", "192.168.0.1", "192.168.0.1", "2001:db:8::", "192.168.0.1", "2001:db:8::",
                           "192.168.0.1", "192.168.0.1", "192.168.0.1", "2001:db:8::", "192.168.0.1", "2001:db:8::"],
-                         add_valid_addresses_to_list("several_rows_of_valid_entries_and_some_junk.csv"))
+                         store_verified_addresses("several_rows_of_valid_entries_and_some_junk.csv"))
 
 
 class TestGetGeoipData(unittest.TestCase):
     def test_empty_list(self):
         self.assertEqual({"No valid IP addresses.":
                               ["None", "None", "None", "None", "None", "None", "None", "None", "None", "None"]},
-                         get_geoip_data([]))
+                         lookup_geoip([]))
 
     def test_list_is_all_junk(self):
         self.assertEqual({"No GeoIP/location data available for this IP.":
                               ["None", "None", "None", "None", "None", "None", "None", "None", "None", "None"]},
-                         get_geoip_data(["Foobar"]))
+                         lookup_geoip(["Foobar"]))
 
     # def test_list_has_one_IPv4_geolite2_match_with_no_available_data(self):
     #     self.assertEqual({"No data available.":
     #                                 ["None", "None", "None", "None", "None", "None", "None", "None", "None", "None"]},
-    #                      get_geoip_data(["17.0.0.0"]))
+    #                      lookup_geoip(["17.0.0.0"]))
 
     def test_list_has_one_good_IPv4_geolite2_match(self):
         self.assertEqual({"17.0.0.1": ['Cupertino', 1000, 37.3042, -122.0946, None, 807, 'California',
                                        'America/Los_Angeles', 'United States', 'North America']},
-                         get_geoip_data(["17.0.0.1"]))
+                         lookup_geoip(["17.0.0.1"]))
 
     def test_list_has_one_IPv6_geolite2_match_with_no_available_data(self):
         self.assertEqual({"No data available in geolite2.":
                                     ["None", "None", "None", "None", "None", "None", "None", "None", "None", "None"]},
-                         get_geoip_data(["2001:db:8::"]))
+                         lookup_geoip(["2001:db:8::"]))
 
     # TODO IPv6 addresses aren't returning geolite2 results. Problem with my code, the database, or the IP addresses?
     # def test_list_has_one_good_IPv6_geolite2_match(self):
     #     self.assertEqual({"17.0.0.1": ['Cupertino', 1000, 37.3042, -122.0946, None, 807, 'California',
     #                                    'America/Los_Angeles', 'United States', 'North America']},
-    #                      get_geoip_data(["2001:4860:0:2001::68"]))
+    #                      lookup_geoip(["2001:4860:0:2001::68"]))
 
     def test_list_has_one_good_IPv4_geolite2_match_and_some_junk(self):
         self.assertEqual({"No GeoIP/location data available for this IP.":
@@ -465,36 +554,36 @@ class TestGetGeoipData(unittest.TestCase):
                              'United States', 'North America'],
                           "No GeoIP/location data available for this IP.":
                             ["None", "None", "None", "None", "None", "None", "None", "None", "None", "None"]},
-                         get_geoip_data(["Foobar", "17.0.0.1", "Barfoo"]))
+                         lookup_geoip(["Foobar", "17.0.0.1", "Barfoo"]))
 
     def test_list_has_two_good_IPv4_geolite2_matches(self):
         self.assertEqual({"17.0.0.1": ['Cupertino', 1000, 37.3042, -122.0946, None, 807, 'California',
                                        'America/Los_Angeles', 'United States', 'North America'],
                           "73.78.160.191": ['Aurora', 5, 39.6603, -104.7681, None, 751, 'Colorado',
                                             'America/Denver', 'United States', 'North America']},
-                         get_geoip_data(["17.0.0.1", "73.78.160.191"]))
+                         lookup_geoip(["17.0.0.1", "73.78.160.191"]))
 
     def test_list_has_two_good_IPv6_geolite2_matches(self):
         self.assertEqual({"17.0.0.1": ['Cupertino', 1000, 37.3042, -122.0946, None, 807, 'California',
                                        'America/Los_Angeles', 'United States', 'North America']},
-                         get_geoip_data(["17.0.0.1"]))
+                         lookup_geoip(["17.0.0.1"]))
 
     def test_list_has_one_good_IPv4_and_one_good_IPv6_geolite2_match(self):
         self.assertEqual({"17.0.0.1": ['Cupertino', 1000, 37.3042, -122.0946, None, 807, 'California',
                                        'America/Los_Angeles', 'United States', 'North America']},
-                         get_geoip_data(["17.0.0.1"]))
+                         lookup_geoip(["17.0.0.1"]))
 
 
 class TestGetRdapData(unittest.TestCase):
     def test_empty_list(self):
         self.assertEqual({"No valid IP addresses.":
                             ["None", "None", "None", "None", "None", "None"]},
-                         get_rdap_data([]))
+                         lookup_rdap([]))
 
     def test_list_has_one_good_IPv4_whois_match(self):
         self.assertEqual({"74.125.225.229":
                             ['15169', '74.125.225.0/24', 'US', '2007-03-13', 'GOOGLE - Google LLC, US', 'arin']},
-                         get_rdap_data(['74.125.225.229']))
+                         lookup_rdap(['74.125.225.229']))
 
     def test_list_has_two_good_IPv4_whois_matches(self):
         self.assertEqual({"74.125.225.229":
@@ -502,16 +591,16 @@ class TestGetRdapData(unittest.TestCase):
                           "17.0.0.1":
                               ['714', '17.0.0.0/21', 'US', '1990-04-16', 'APPLE-ENGINEERING - Apple Inc., US', 'arin']
                           },
-                         get_rdap_data(['74.125.225.229', '17.0.0.1']))
+                         lookup_rdap(['74.125.225.229', '17.0.0.1']))
 
     def test_list_has_one_good_IPv6_whois_match(self):
         self.assertEqual({"2001:4860:0:2001::68":
                             ['15169', '2001:4860::/32', 'US', '2005-03-14', 'GOOGLE - Google LLC, US', 'arin']},
-                         get_rdap_data(['2001:4860:0:2001::68']))
+                         lookup_rdap(['2001:4860:0:2001::68']))
 
 
 class TestDisplayGeoipAndRdapData(unittest.TestCase):
-    geoip_output = ("IP Address           City           Radius           Latitude           Longitude           "
+    geoip_output = ("Ip address           City           Radius           Latitude           Longitude           "
                     + "Postal Code           Metro Code           Subdivision           Time Zone           Country           "
                     + "Continent\n17.0.0.1          Cupertino           1000                37.3042             "
                     + "-122.0946           None                807                 California          America/Los_Angeles "
@@ -544,23 +633,23 @@ class TestDisplayGeoipAndRdapData(unittest.TestCase):
 
     def test_empty_geoip_dict_and_empty_rdap_dict(self):
         self.assertEqual("No valid GeoIP data was passed in.\nNo valid RDAP data was passed in.",
-                         display_geoip_and_rdap_data({}, {}))
+                         display_data({}, {}))
 
     def test_one_geoip_dict_and_empty_rdap_dict(self):
         self.assertEqual(TestDisplayGeoipAndRdapData.geoip_output + "\n\nNo valid RDAP data was passed in.",
-                         display_geoip_and_rdap_data(TestDisplayGeoipAndRdapData.geoip_dict, {}))
+                         display_data(TestDisplayGeoipAndRdapData.geoip_dict, {}))
 
     def test_empty_geoip_dict_and_one_rdap_dict(self):
         self.assertEqual(TestDisplayGeoipAndRdapData.rdap_output + "\n\nNo valid GeoIP data was passed in.",
-                         display_geoip_and_rdap_data({},TestDisplayGeoipAndRdapData.rdap_dict))
+                         display_data({}, TestDisplayGeoipAndRdapData.rdap_dict))
 
     def test_one_good_geoip_dict_and_one_good_rdap_dict(self):
         self.assertEqual(TestDisplayGeoipAndRdapData.geoip_output + "\n\n" + TestDisplayGeoipAndRdapData.rdap_output,
-            display_geoip_and_rdap_data(TestDisplayGeoipAndRdapData.geoip_dict, TestDisplayGeoipAndRdapData.rdap_dict))
+                         display_data(TestDisplayGeoipAndRdapData.geoip_dict, TestDisplayGeoipAndRdapData.rdap_dict))
 
     def test_two_good_geoip_dicts_and_two_good_rdap_dicts(self):
         self.assertEqual(TestDisplayGeoipAndRdapData.geoip_double_output + "\n\n" + TestDisplayGeoipAndRdapData.rdap_double_output,
-            display_geoip_and_rdap_data(TestDisplayGeoipAndRdapData.geoip_double_dict, TestDisplayGeoipAndRdapData.rdap_double_dict))
+                         display_data(TestDisplayGeoipAndRdapData.geoip_double_dict, TestDisplayGeoipAndRdapData.rdap_double_dict))
 
 
 if __name__ == '__main__':
